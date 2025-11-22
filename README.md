@@ -16,7 +16,7 @@ so please tell your friends that like cats to download this!!!!!!
 - a custom new tab page that shows interesting facts with a search bar
 ## discord server
 
-you can download extensions there
+you can download extensions in cat browser community
 
 https://discord.gg/GrZa3BmDpW
 
@@ -31,4 +31,5 @@ android = available but in another repo since it uses a diff coding lang
 ios = never, its not open source
 
 macos = not available
+
 
