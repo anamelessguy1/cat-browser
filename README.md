@@ -32,6 +32,33 @@ ios = never, its not open source
 
 macos = not available
 
+## screenshots
+
+### welcome screen
+
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/welcomescreen.png" width="720" height="480">
+</h1>
+
+### new tab page
+
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/newtabpage.png" width="1280" height="720">
+</h1>
+
+### settings page
+
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/settingspage.png" width="1280" height="720">
+</h1>
+
+### adblocker and website example showcase
+
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
+</h1>
+
+
 
 
 
