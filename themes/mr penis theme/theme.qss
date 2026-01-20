@@ -1,0 +1,42 @@
+:root {
+    --primary-color: #ff6b6b;
+    --secondary-color: #4ecdc4;
+    --background-gradient: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #2c3e50, stop:1 #1a1a2e);
+    --button-bg: rgba(255, 255, 255, 0.1);
+    --button-hover: rgba(255, 255, 255, 0.2);
+}
+
+QMainWindow {
+    background: var(--background-gradient);
+    color: white;
+}
+
+QPushButton {
+    background: var(--button-bg);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 5px;
+    padding: 5px;
+}
+
+QPushButton:hover {
+    background: var(--button-hover);
+}
+
+
+QPushButton#backButton {
+    image: url("back.png");
+    border: none;
+    background: transparent;
+}
+
+
+QScrollBar::handle:vertical {
+    background: var(--primary-color);
+    border-radius: 6px;
+    image: url("scroll_handle.png");
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    image: url("scroll_up.png");
+    height: 20px;
+}
