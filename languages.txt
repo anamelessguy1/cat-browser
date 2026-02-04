@@ -64,6 +64,12 @@ default_theme=Default theme
 restore_session=Restore session
 memory_saver=Memory saver
 memory-settings=Memory settings
+enable_autofill=Enable autofill
+auto_save_passwords=Auto save passwords
+enable_extensions=Enable extensions
+reload_extensions=Reload extensions
+extensions_disabled_note=Disabled Extensions:
+
 
 [Français]
 welcome_title=cat browser (réel)
@@ -131,6 +137,10 @@ default_theme=Thème défaut
 restore_session=Restaurer la session
 memory_saver=économiseur de mémoire
 memory-settings=paramètres de mémoire
+auto_save_passwords=Enregistrement automatique des mots de passe
+enable_extensions=Activer les extensions
+reload_extensions=Actualiser les extensions
+extensions_disabled_note=Extensions désactivées:
 
 [arabic]
 welcome_title=متصفح القط (حقيقي)
@@ -198,8 +208,10 @@ default_theme=الموضوع الافتراضي
 restore_session=استعادة الجلسة
 memory_saver=موفر الذاكرة
 memory-settings=إعدادات الذاكرة
-
-
+auto_save_passwords=حفظ كلمات المرور تلقائيًا
+enable_extensions=تفعيل الإضافات
+reload_extensions=إعادة تحميل الإضافات
+extensions_disabled_note=تعطيل الإضافات:
 
 [Русский]
 welcome_title=котобраузер (реально)
@@ -266,6 +278,10 @@ memory_saver=экономия памяти
 restore_session=восстановить сеанс
 url=URL
 enter_url=введите URL
+auto_save_passwords=автоматически сохранять пароли
+enable_extensions=включить расширения
+reload_extensions=перезагрузить расширения
+extensions_disabled_note=выключенные расширения:
 
 [DeutschDE]
 welcome_title=Katzen browser (echt)
@@ -332,6 +348,10 @@ memory_saver=speicherplatz-speicher
 restore_session=sitzung wiederherstellen
 url=URL
 enter_url=URL eingeben
+auto_save_passwords=automatisch passwörter speichern
+enable_extensions=erweiterungen einschalten
+reload_extensions=erweiterungen wiederladen
+extensions_disabled_note=ausgeschaltete erweiterungen:
 
 [Română]
 welcome_title=browser de pisici (real)
@@ -399,6 +419,10 @@ memory_saver=salvator de memorie
 memory_settings= setări de memorie
 url=URL
 enter_url=intră URL
+auto_save_passwords=salveaza parolele automat
+enable_extensions=activeaza extensiile
+reload_extensions=reincarca extensiile
+extensions_disabled_note=extensi deactivate:
 
 [Polski]
 welcome_title=kocia przeglądarka (prawdziwa)
@@ -466,3 +490,78 @@ memory_saver=Oszczędzanie pamięci
 memory=settings=ustawienia pamięci
 url=URL
 enter_url=typ URL
+auto_save_passwords=automatyczne zapisywanie haseł
+enable_extensions=włączanie rozszerzeń
+reload_extensions=przeładowywanie rozszerzeń
+extensions_disabled_note=wyłączanie rozszerzeń:
+
+[Brazilian Portuguese]
+welcome_title=Cat Browser
+search_placeholder=Pesquisar ou entrar numa URL
+shortcuts=Atalhos
+add_shortcut=Adicionar um atalho
+cancel=cancelar
+settings=Configurações
+tabs_count=Guias abertas: {}
+startup_settings=Configurações de incialização
+show_welcome=Mostrar tela de Bem-vindo na incialização
+search_engine=Ferramenta de pequisa
+extensions=Extensões
+passwords=Senhas
+import_csv=Importar CSV
+export_csv=Exportar CSV
+history=Histórico
+language=Ídioma
+no_extensions=Não há extensões neste momento.
+no_shortcuts=Não há atalhos neste momento.
+fun_fact=Curiosidade: {}
+shortcut_name=Nome do Atalho:
+enter_name=Digite o nome do atalho...
+close=Fechar
+new_tab=Nova Guia
+download=Download
+save_as=Salvar como
+csv_files=CSV Files (*.csv)
+import_passwords=Importar Senhas
+export_passwords=Exportar Senhas
+loaded_extensions=Extensões
+description=Descrição: {}
+version=Versão: {}
+setup_wizard=setup cat browser!!
+setup_step1_desc=Escolha sua ferramenta de pesquisa:
+setup_step2_title=Escolha seu idioma
+setup_step2_desc=selecione seu idioma preferido!
+setup_step3_title=Importar senhas
+setup_step3_desc=Deseja importar suas senhas?, você pode pular isso e mudar nas configurações
+setup_step4_title=Tela inicial
+setup_step4_desc=Mostrar tela inicial na inicialização?,
+setup_complete=Completo!!
+setup_ready=Muito obrigado por usar esse navegador, aproveite seu uso.
+see_credits=Créditos
+back=Voltar
+next=Próximo
+finish=Terminar
+start_browsing=Começar a navegar
+skip=Pular
+credits_title=Créditos
+development_team=Time de desenvolvimento
+developer=Desenvolvedor
+special_thanks=Agradecimento
+for_gui_framework=gui framework
+for_webengine=web engine
+success=Successo
+passwords_imported=Senhas importadas
+error=Erro
+import_failed=Ops! ocorreu um erro ao tentar importar suas senhas: {}
+translators=tradutores
+url=URL
+enter_url= Acessar URL
+theme=Tema
+default_theme=Tema Padrão
+restore_session=Restaurar Sessão
+memory_saver=Economizador de Mémoria
+memory-settings=Configurações de Mémoria
+auto_save_passwords=Salvar senhas automaticamente
+enable_extensions=Ativar extensões
+reload_extensions=Recarregar extensões
+extensions_disabled_note=Extensões desativadas:
