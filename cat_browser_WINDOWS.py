@@ -20,10 +20,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import (
-    QWebEngineProfile, QWebEnginePage, QWebEngineDownloadRequest,
-    QWebEngineScript, QWebEngineSettings
-)
+from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage, QWebEngineDownloadRequest, QWebEngineScript, QWebEngineSettings
 from PyQt6.QtGui import (
     QPixmap, QPainter, QPen, QIcon, QFontDatabase, QAction, QFont,
     QColor, QLinearGradient, QBrush, QPalette, QCursor, QMouseEvent
@@ -39,44 +36,39 @@ try:
 except ImportError:
     DISCORD_RPC_AVAILABLE = False
 
-
-if getattr(sys, "frozen", False):
-    APP_DIR = os.path.dirname(sys.executable)
-    ASSET_DIR = getattr(sys, "_MEIPASS", APP_DIR)
+if getattr(sys, 'frozen', False):
+    BASE_PATH = os.path.dirname(os.path.abspath(sys.executable))
 else:
-    APP_DIR = os.path.dirname(os.path.abspath(__file__))
-    ASSET_DIR = APP_DIR
+    BASE_PATH = os.path.dirname(__file__)
 
+WELCOME_IMG = os.path.join(BASE_PATH, "welcome.png")
+FONT_FILE = os.path.join(BASE_PATH, "vrc.ttf")
+BG_IMG = os.path.join(BASE_PATH, "bg.png")
+BG2_IMG = os.path.join(BASE_PATH, "bg2.png")
+FACTS_FILE = os.path.join(BASE_PATH, "facts.txt")
+LANGUAGES_FILE = os.path.join(BASE_PATH, "languages.txt")
 
-def asset(name):
-    return os.path.join(ASSET_DIR, name)
-
-
-WELCOME_IMG    = asset("welcome.png")
-BG_IMG         = asset("bg.png")
-BG2_IMG        = asset("bg2.png")
-SPLASH_VIDEO   = asset("splash.mp4")
-FONT_FILE      = asset("vrc.ttf")
-LANGUAGES_FILE = asset("languages.txt")
-FACTS_FILE     = asset("facts.txt")
-
-
-DATA_DIR = os.path.join(APP_DIR, "cat_data")
+DATA_DIR = os.path.join(os.path.expanduser("~"), ".cat_browser")
+SPLASH_VIDEO = os.path.join(BASE_PATH, "splash.mp4")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 EXTENSIONS_DIR = os.path.join(DATA_DIR, "extensions")
-FAVICON_DIR    = os.path.join(DATA_DIR, "favicons")
-THEMES_DIR     = os.path.join(DATA_DIR, "themes")
+os.makedirs(EXTENSIONS_DIR, exist_ok=True)
 
-for d in (EXTENSIONS_DIR, FAVICON_DIR, THEMES_DIR):
-    os.makedirs(d, exist_ok=True)
+FAVICON_DIR = os.path.join(DATA_DIR, "favicons")
+os.makedirs(FAVICON_DIR, exist_ok=True)
 
-HISTORY_FILE        = os.path.join(DATA_DIR, "history.json")
-PASSWORDS_FILE     = os.path.join(DATA_DIR, "passwords.csv")
+THEMES_DIR = os.path.join(DATA_DIR, "themes")
+os.makedirs(THEMES_DIR, exist_ok=True)
+
+HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
+PASSWORDS_FILE = os.path.join(DATA_DIR, "passwords.csv")
 SEARCH_ENGINE_FILE = os.path.join(DATA_DIR, "search_engine.json")
-SHORTCUTS_FILE     = os.path.join(DATA_DIR, "shortcuts.json")
-SETTINGS_FILE      = os.path.join(DATA_DIR, "settings.json")
-SETUP_FILE         = os.path.join(DATA_DIR, "setup_completed.json")
+SHORTCUTS_FILE = os.path.join(DATA_DIR, "shortcuts.json")
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+SETUP_FILE = os.path.join(DATA_DIR, "setup_completed.json")
+SESSION_FILE = os.path.join(DATA_DIR, "session.json")
+TAB_STATE_FILE = os.path.join(DATA_DIR, "tab_states.json")
 
 DISCORD_APP_ID = "1439639890848383149"
 
