@@ -4,6 +4,7 @@ import csv
 import random
 import json
 import time
+import psutil
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
@@ -103,13 +104,11 @@ class ThemeEngine:
                     new_tab_page.bg_label.setPixmap(scaled_pixmap)
                     new_tab_page.bg_label.setScaledContents(False)
                 if tab_index is not None:
-                    print(f"theme system: applied background to new tab {tab_index}")
-                else:
-                    print(f"theme system: applied background to new tab")
+                    print("theme system: applied background to new tab")
             else:
-                print(f"theme system: failed to load pixmap from {bg_image}")
+                print("theme system: failed to load pixmap from")
         except Exception as e:
-            print(f"theme system: error applying background: {e}")
+            print("theme system: error applying background")
 
     def apply_theme(self, theme_name):
         if not hasattr(self.browser, 'themes') or not self.browser.themes:
@@ -1852,39 +1851,100 @@ class SettingsTab(QWidget):
         self.browser = browser
         self.translator = browser.translator
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1a1a1a;
+            }
+        """)
+
         self.main_widget = QWidget()
+        self.main_widget.setStyleSheet("background-color: #1a1a1a;")
         self.main_layout = QVBoxLayout(self.main_widget)
         self.main_layout.setContentsMargins(10,10,10,10)
         self.main_layout.setSpacing(15)
 
         title = QLabel(self.translator.tr("settings", "Settings"))
-        title.setStyleSheet("color:white;font-size:24px;font-weight:bold;")
+        title.setStyleSheet("""
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: transparent;
+            padding: 5px;
+        """)
         self.main_layout.addWidget(title)
 
+        version_label = QLabel("version: 0.5.3")
+        version_label.setStyleSheet("""
+            color: #b0b0b0;
+            font-size: 12px;
+            font-weight: normal;
+            background-color: transparent;
+            padding: 2px;
+        """)
+        self.main_layout.addWidget(version_label)
+
         tab_count_label = QLabel(self.translator.tr("tabs_count", "{}").format(self.browser.tabs.count()))
-        tab_count_label.setStyleSheet("color:white;font-size:16px;")
+        tab_count_label.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
         self.main_layout.addWidget(tab_count_label)
 
-        general_group = QGroupBox(self.translator.tr("general", "General Settings"))
-        general_group.setStyleSheet("""
+        self.ram_label = QLabel("RAM: 0 MB")
+        self.ram_label.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
+        self.main_layout.addWidget(self.ram_label)
+
+        self.version = QLabel("0.5.2")
+        self.version.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
+
+        self.ram_timer = QTimer()
+        self.ram_timer.timeout.connect(self.update_ram_usage)
+        self.ram_timer.start(1000)
+
+        group_box_style = """
             QGroupBox {
                 color: white;
                 font-size: 16px;
                 font-weight: bold;
-                border: 2px solid #555;
+                border: 2px solid #444;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
+                background-color: #2a2a2a;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
+                color: #ffffff;
+                background-color: transparent;
             }
-        """)
+        """
+
+        general_group = QGroupBox(self.translator.tr("general", "General Settings"))
+        general_group.setStyleSheet(group_box_style)
         general_layout = QFormLayout(general_group)
+        general_layout.setSpacing(10)
+
+        label_style = """
+            QLabel {
+                color: #e0e0e0;
+                background-color: transparent;
+                padding: 3px;
+            }
+        """
 
         language_label = QLabel(self.translator.tr("language", "Language:"))
+        language_label.setStyleSheet(label_style)
         self.language_combo = QComboBox()
         self.language_combo.setStyleSheet("""
             QComboBox {
@@ -1894,6 +1954,9 @@ class SettingsTab(QWidget):
                 border-radius: 5px;
                 padding: 5px;
                 min-width: 150px;
+            }
+            QComboBox:hover {
+                border: 1px solid #666;
             }
             QComboBox::drop-down {
                 border: none;
@@ -1925,6 +1988,7 @@ class SettingsTab(QWidget):
         general_layout.addRow(language_label, self.language_combo)
 
         search_label = QLabel(self.translator.tr("search_engine", "Search Engine:"))
+        search_label.setStyleSheet(label_style)
         self.search_combo = QComboBox()
         self.search_combo.setStyleSheet(self.language_combo.styleSheet())
 
@@ -1940,7 +2004,9 @@ class SettingsTab(QWidget):
         general_layout.addRow(search_label, self.search_combo)
 
         theme_label = QLabel(self.translator.tr("theme", "Theme:"))
+        theme_label.setStyleSheet(label_style)
         theme_container = QWidget()
+        theme_container.setStyleSheet("background-color: transparent;")
         theme_container_layout = QVBoxLayout(theme_container)
         theme_container_layout.setContentsMargins(0,0,0,0)
         theme_container_layout.setSpacing(5)
@@ -1960,21 +2026,22 @@ class SettingsTab(QWidget):
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         theme_container_layout.addWidget(self.theme_combo)
 
-
         general_layout.addRow(theme_label, theme_container)
         self.main_layout.addWidget(general_group)
 
         startup_group = QGroupBox(self.translator.tr("startup_settings", "Startup Settings"))
-        startup_group.setStyleSheet(general_group.styleSheet())
+        startup_group.setStyleSheet(group_box_style)
         startup_layout = QVBoxLayout(startup_group)
+        startup_layout.setSpacing(8)
 
         self.welcome_checkbox = QCheckBox(self.translator.tr("show_welcome", "Show welcome screen on startup"))
         self.welcome_checkbox.setChecked(self.browser.settings.get("show_welcome_screen", True))
         self.welcome_checkbox.setStyleSheet("""
             QCheckBox {
-                color: white;
+                color: #e0e0e0;
                 font-size: 14px;
                 spacing: 8px;
+                background-color: transparent;
             }
             QCheckBox::indicator {
                 width: 16px;
@@ -2007,8 +2074,9 @@ class SettingsTab(QWidget):
         self.main_layout.addWidget(startup_group)
 
         memory_group = QGroupBox(self.translator.tr("memory_settings", "Memory Settings"))
-        memory_group.setStyleSheet(general_group.styleSheet())
+        memory_group.setStyleSheet(group_box_style)
         memory_layout = QVBoxLayout(memory_group)
+        memory_layout.setSpacing(8)
 
         self.memory_saver_checkbox = QCheckBox(self.translator.tr("memory_saver", "Memory Saver (unloads inactive tabs after 5 minutes)"))
         self.memory_saver_checkbox.setChecked(self.browser.settings.get("memory_saver", False))
@@ -2017,10 +2085,36 @@ class SettingsTab(QWidget):
         memory_layout.addWidget(self.memory_saver_checkbox)
 
         self.main_layout.addWidget(memory_group)
+        autofill_group = QGroupBox(self.translator.tr("autofill_settings", "Autofill Settings"))
+        autofill_group.setStyleSheet(group_box_style)
+        autofill_layout = QVBoxLayout(autofill_group)
+        autofill_layout.setSpacing(8)
+
+        self.autofill_checkbox = QCheckBox(self.translator.tr("enable_autofill", "Enable Autofill (automatically fill login forms)"))
+        self.autofill_checkbox.setChecked(self.browser.settings.get("autofill_enabled", True))
+        self.autofill_checkbox.setStyleSheet(self.welcome_checkbox.styleSheet())
+        self.autofill_checkbox.stateChanged.connect(self.on_autofill_changed)
+        autofill_layout.addWidget(self.autofill_checkbox)
+
+        self.auto_save_checkbox = QCheckBox(self.translator.tr("auto_save_passwords", "Automatically save passwords"))
+        self.auto_save_checkbox.setChecked(self.browser.settings.get("auto_save_passwords", True))
+        self.auto_save_checkbox.setStyleSheet(self.welcome_checkbox.styleSheet())
+        self.auto_save_checkbox.stateChanged.connect(self.on_auto_save_changed)
+        autofill_layout.addWidget(self.auto_save_checkbox)
+
+        self.main_layout.addWidget(autofill_group)
 
         extensions_group = QGroupBox(self.translator.tr("extensions", "Extensions"))
-        extensions_group.setStyleSheet(general_group.styleSheet())
+        extensions_group.setStyleSheet(group_box_style)
         extensions_layout = QVBoxLayout(extensions_group)
+        extensions_layout.setSpacing(10)
+
+        self.extensions_enabled_checkbox = QCheckBox(self.translator.tr("enable_extensions", "Enable Extensions"))
+        extensions_enabled = self.browser.settings.get("extensions_enabled", True)
+        self.extensions_enabled_checkbox.setChecked(extensions_enabled)
+        self.extensions_enabled_checkbox.setStyleSheet(self.welcome_checkbox.styleSheet())
+        self.extensions_enabled_checkbox.stateChanged.connect(self.on_extensions_enabled_changed)
+        extensions_layout.addWidget(self.extensions_enabled_checkbox)
 
         self.ext_text = QTextEdit()
         self.ext_text.setReadOnly(True)
@@ -2028,26 +2122,34 @@ class SettingsTab(QWidget):
         self.ext_text.setStyleSheet("""
             QTextEdit {
                 background: #2b2b2b;
-                color: white;
-                border: 1px solid #555;
+                color: #e0e0e0;
+                border: 1px solid #444;
                 border-radius: 5px;
-                padding: 5px;
+                padding: 8px;
                 font-size: 12px;
+                selection-background-color: #0078d4;
+            }
+            QScrollBar:vertical {
+                background: #2b2b2b;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #666;
             }
         """)
         extensions_layout.addWidget(self.ext_text)
-        self.update_extensions_view()
-        self.main_layout.addWidget(extensions_group)
 
-        passwords_group = QGroupBox(self.translator.tr("passwords", "Passwords"))
-        passwords_group.setStyleSheet(general_group.styleSheet())
-        passwords_layout = QVBoxLayout(passwords_group)
+        ext_buttons_layout = QHBoxLayout()
 
-        pw_buttons_layout = QHBoxLayout()
-        self.import_btn = QPushButton(self.translator.tr("import_csv", "Import CSV"))
-        self.export_btn = QPushButton(self.translator.tr("export_csv", "Export CSV"))
+        self.reload_ext_btn = QPushButton(self.translator.tr("reload_extensions", "Reload Extensions"))
 
-        self.import_btn.setStyleSheet("""
+        button_style = """
             QPushButton {
                 background: #0078d4;
                 color: white;
@@ -2056,17 +2158,44 @@ class SettingsTab(QWidget):
                 border-radius: 4px;
                 font-size: 14px;
                 font-weight: bold;
+                margin-right: 5px;
             }
             QPushButton:hover { background: #106ebe; }
             QPushButton:pressed { background: #005a9e; }
-        """)
-        self.export_btn.setStyleSheet(self.import_btn.styleSheet())
+            QPushButton:disabled {
+                background: #555;
+                color: #999;
+            }
+        """
+
+        self.reload_ext_btn.setStyleSheet(button_style)
+
+        self.reload_ext_btn.clicked.connect(self.reload_extensions)
+
+        ext_buttons_layout.addWidget(self.reload_ext_btn)
+        ext_buttons_layout.addStretch()
+
+        extensions_layout.addLayout(ext_buttons_layout)
+        self.main_layout.addWidget(extensions_group)
+
+        passwords_group = QGroupBox(self.translator.tr("passwords", "Passwords"))
+        passwords_group.setStyleSheet(group_box_style)
+        passwords_layout = QVBoxLayout(passwords_group)
+        passwords_layout.setSpacing(10)
+
+        pw_buttons_layout = QHBoxLayout()
+        self.import_btn = QPushButton(self.translator.tr("import_csv", "Import CSV"))
+        self.export_btn = QPushButton(self.translator.tr("export_csv", "Export CSV"))
+
+        self.import_btn.setStyleSheet(button_style)
+        self.export_btn.setStyleSheet(button_style)
 
         self.import_btn.clicked.connect(self.import_csv)
         self.export_btn.clicked.connect(self.export_csv)
 
         pw_buttons_layout.addWidget(self.import_btn)
         pw_buttons_layout.addWidget(self.export_btn)
+        pw_buttons_layout.addStretch()
         passwords_layout.addLayout(pw_buttons_layout)
 
         self.pw_text = QTextEdit()
@@ -2078,8 +2207,9 @@ class SettingsTab(QWidget):
         self.main_layout.addWidget(passwords_group)
 
         history_group = QGroupBox(self.translator.tr("history", "History"))
-        history_group.setStyleSheet(general_group.styleSheet())
+        history_group.setStyleSheet(group_box_style)
         history_layout = QVBoxLayout(history_group)
+        history_layout.setSpacing(10)
 
         self.hist_text = QTextEdit()
         self.hist_text.setReadOnly(True)
@@ -2124,6 +2254,77 @@ class SettingsTab(QWidget):
 
         self.setLayout(main_layout)
 
+        self.update_extensions_view()
+        self.update_extension_buttons_state()
+
+    def on_autofill_changed(self, state):
+        enabled = (state == Qt.Checked)
+        self.browser.settings["autofill_enabled"] = enabled
+        self.browser.save_settings()
+        self.browser.enable_autofill(enabled)
+        self.show_status_message(f"Autofill {'enabled' if enabled else 'disabled'}")
+
+    def on_auto_save_changed(self, state):
+        enabled = (state == Qt.Checked)
+        self.browser.settings["auto_save_passwords"] = enabled
+        self.browser.save_settings()
+        self.browser.enable_auto_save_passwords(enabled)
+        self.show_status_message(f"Auto-save passwords {'enabled' if enabled else 'disabled'}")
+
+    def update_pw_view(self):
+        s = ""
+        for site, info in self.browser.passwords.items():
+            s += f"{site} - {info['user']} / {info['pass']}\n"
+        self.pw_text.setText(s)
+
+        if hasattr(self, 'delete_buttons_layout'):
+            while self.delete_buttons_layout.count():
+                item = self.delete_buttons_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+        else:
+            self.delete_buttons_layout = QVBoxLayout()
+            passwords_group = self.findChild(QGroupBox, "Passwords")
+            passwords_group.layout().addLayout(self.delete_buttons_layout)
+
+        for site in self.browser.passwords.keys():
+            delete_btn = QPushButton(f"Delete: {site}")
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    margin: 2px;
+                }
+                QPushButton:hover { background: #b71c1c; }
+                QPushButton:pressed { background: #9a0007; }
+            """)
+            delete_btn.clicked.connect(lambda checked, s=site: self.delete_password(s))
+            self.delete_buttons_layout.addWidget(delete_btn)
+
+    def delete_password(self, site):
+        reply = QMessageBox.question(
+            self,
+            "Delete Password",
+            f"Are you sure you want to delete the password for:\n{site}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.browser.delete_password(site):
+                self.update_pw_view()
+                self.show_status_message(f"Password deleted for: {site}")
+            else:
+                self.show_status_message(f"No password found for: {site}")
+
+    def update_ram_usage(self):
+        process = psutil.Process(os.getpid())
+        ram_mb = process.memory_info().rss / 1024**2
+        self.ram_label.setText(f"RAM: {ram_mb:.1f} MB")
+
     def on_language_changed(self, lang):
         if self.translator.set_language(lang):
             self.browser.save_settings()
@@ -2148,17 +2349,59 @@ class SettingsTab(QWidget):
         self.browser.settings["restore_session"] = (state == Qt.Checked)
         self.browser.save_settings()
 
-    def update_extensions_view(self):
-        if not self.browser.extensions:
-            self.ext_text.setText(self.translator.tr("no_extensions", "No extensions loaded."))
+    def on_extensions_enabled_changed(self, state):
+        enabled = (state == Qt.Checked)
+        self.browser.settings["extensions_enabled"] = enabled
+        self.browser.save_settings()
+
+        self.browser.extensions_enabled = enabled
+
+        self.update_extension_buttons_state()
+        self.update_extensions_view()
+
+        if enabled:
+            self.show_status_message("Extensions enabled")
         else:
-            ext_info = self.translator.tr("loaded_extensions", "Loaded Extensions:\n\n")
+            self.show_status_message("Extensions disabled")
+
+    def update_extension_buttons_state(self):
+        enabled = self.browser.settings.get("extensions_enabled", True)
+        self.reload_ext_btn.setEnabled(enabled)
+        self.ext_text.setEnabled(enabled)
+
+    def show_status_message(self, message):
+        print(f"status: {message}")
+
+    def update_extensions_view(self):
+        enabled = self.browser.settings.get("extensions_enabled", True)
+
+        if not self.browser.extensions:
+            if enabled:
+                self.ext_text.setText(self.translator.tr("no_extensions", "No extensions loaded."))
+            else:
+                self.ext_text.setText(self.translator.tr("extensions_disabled", "Extensions are currently disabled."))
+        else:
+            ext_info = ""
+            if not enabled:
+                ext_info += self.translator.tr("extensions_disabled_note", "⚠️ Extensions are disabled (will not execute)\n\n")
+
+            ext_info += self.translator.tr("loaded_extensions", "Loaded Extensions:\n\n")
             for ext_name, ext_data in self.browser.extensions.items():
-                ext_info += f"• {ext_name}\n"
+                status = "✓" if enabled else "✗"
+                ext_info += f"{status} {ext_name}\n"
                 ext_info += self.translator.tr("description", "  Description: {}").format(ext_data.get('description', 'No description')) + "\n"
                 ext_info += self.translator.tr("version", "  Version: {}").format(ext_data.get('version', '1.0')) + "\n"
                 ext_info += f"  Script: {ext_data.get('script', 'No script')}\n\n"
             self.ext_text.setText(ext_info)
+
+    def reload_extensions(self):
+        if not self.browser.settings.get("extensions_enabled", True):
+            return
+
+        if hasattr(self.browser, 'reload_extensions'):
+            self.browser.reload_extensions()
+        self.update_extensions_view()
+        self.show_status_message("Extensions reloaded")
 
     def update_pw_view(self):
         s = ""
@@ -2197,14 +2440,10 @@ class SettingsTab(QWidget):
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
-        if sys.platform == "darwin":
-            QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-            QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-        
-        self.setAttribute(Qt.WA_MacAlwaysShowToolWindow, False)
         self.setWindowTitle("cat browser")
         self.resize(1280,800)
         self.watchdog_timer = QTimer()
+        self.watchdog_timer.timeout.connect(self.check_browser_health)
         self.watchdog_timer.start(30000)
         self.translator = Translator()
         self.search_engines = {
@@ -2220,25 +2459,34 @@ class Browser(QMainWindow):
         self.extensions = {}
         self.current_theme = None
         self.current_search_engine = self.load_search_engine()
-        self.settings = self.load_settings()
+        self.settings = self.load_settings()  # MUST COME FIRST
 
         lang = self.settings.get("language", "English")
         self.translator.set_language(lang)
 
+        self.autofill_enabled = self.settings.get("autofill_enabled", True)
+        self.auto_save_passwords = self.settings.get("auto_save_passwords", True)
+
+        self.rpc = None
+
         self.profile = QWebEngineProfile("cat_profile")
-        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.ForcePersistentCookies)
+        self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
         self.profile.setPersistentStoragePath(DATA_DIR)
         self.profile.downloadRequested.connect(self.on_download)
         default_settings = self.profile.settings()
-        default_settings.setAttribute(QWebEngineSettings.PlaybackRequiresUserGesture, False)
-        default_settings.setAttribute(QWebEngineSettings.FocusOnNavigationEnabled, True)
-        default_settings.setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, True)
-        default_settings.setAttribute(QWebEngineSettings.JavascriptCanAccessClipboard, True)
-        default_settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
-        default_settings.setAttribute(QWebEngineSettings.LocalContentCanAccessFileUrls, True)
-        default_settings.setAttribute(QWebEngineSettings.AllowWindowActivationFromJavaScript, True)
-        default_settings.setAttribute(QWebEngineSettings.ShowScrollBars, True)
-        default_settings.setAttribute(QWebEngineSettings.PdfViewerEnabled, False)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.FocusOnNavigationEnabled, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.AllowWindowActivationFromJavaScript, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, False)
+
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
 
         self.memory_saver_enabled = self.settings.get("memory_saver", False)
         self.tab_last_accessed = {}
@@ -2261,6 +2509,42 @@ class Browser(QMainWindow):
         else:
             self.add_tab(is_new_tab=True)
 
+    def detect_password_submission(self, web_view, form_data):
+        if not self.auto_save_passwords:
+            return
+
+        if 'password' in form_data and 'username' in form_data:
+            current_url = web_view.url().toString()
+            domain = self.extract_domain(current_url)
+
+            reply = QMessageBox.question(
+                self,
+                "Save Password",
+                f"Do you want to save the password for {domain}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+
+            if reply == QMessageBox.StandardButton.Yes:
+                self.save_password_automatically(
+                    domain,
+                    form_data['username'],
+                    form_data['password']
+                )
+
+    def check_browser_health(self):
+        try:
+            import psutil
+            process = psutil.Process()
+            memory_mb = process.memory_info().rss / 1024 / 1024
+
+            if memory_mb > 2000:
+                print(f"browser: high memory usage {memory_mb:.2f} mb, cleaning up...")
+                self.force_cleanup_tabs()
+
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"watchdog error: {e}")
 
     def force_cleanup_tabs(self):
         current_time = datetime.now()
@@ -2297,6 +2581,16 @@ class Browser(QMainWindow):
                             self.unload_tab_content(i)
                 else:
                     self.tab_last_accessed[tab_id] = current_time
+
+
+    def setup_webengine_crash_handler(self):
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu-compositing --enable-gpu-rasterization --disable-software-rasterizer"
+
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --max_old_space_size=4096"
+
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --disable-features=UseChromeOSDirectVideoDecoder"
+
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --enable-vulkan"
 
     def setup_ui(self):
         main_layout = QVBoxLayout()
@@ -2438,7 +2732,7 @@ class Browser(QMainWindow):
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
 
-            if hasattr(tab, 'web_view') and tab.web_view:
+            if hasattr(tab, 'browser') and tab.browser:
                 tab_id = id(tab)
                 last_access = self.tab_last_accessed.get(tab_id)
 
@@ -2496,7 +2790,7 @@ class Browser(QMainWindow):
                         placeholder_text += f"\n\nURL: {url}\nClick anywhere to reload"
 
                     placeholder = QLabel(placeholder_text)
-                    placeholder.setAlignment(Qt.AlignCenter)
+                    placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
                     placeholder.setStyleSheet("""
                         QLabel {
                             color: white;
@@ -2751,7 +3045,9 @@ class Browser(QMainWindow):
             "language": "English",
             "theme": self.translator.tr("default_theme", "Default Theme"),
             "memory_saver": False,
-            "restore_session": True
+            "restore_session": True,
+            "autofill_enabled": True,
+            "auto_save_passwords": True
         }
         if os.path.exists(SETTINGS_FILE):
             try:
@@ -2878,7 +3174,7 @@ class Browser(QMainWindow):
             if script_content:
                 script = QWebEngineScript()
                 script.setSourceCode(script_content)
-                script.setInjectionPoint(QWebEngineScript.DocumentReady)
+                script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
                 script.setRunsOnSubFrames(True)
                 self.profile.scripts().insert(script)
 
@@ -2925,6 +3221,22 @@ class Browser(QMainWindow):
     def create_tab_view(self):
         web_view = InspectorWebView(self.profile, browser=self)
         return web_view
+
+    def add_tab(self, url=None, is_new_tab=False):
+        new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
+        i = self.tabs.addTab(new_tab,
+            self.translator.tr("new_tab", "New Tab") if is_new_tab else self.translator.tr("loading", "Loading..."))
+        self.tabs.setCurrentIndex(i)
+
+        if not is_new_tab and hasattr(new_tab, 'web_view') and new_tab.web_view:
+            new_tab.web_view.urlChanged.connect(lambda u, t=new_tab: self.on_url_change(t))
+            new_tab.web_view.titleChanged.connect(lambda t, i=i: self.on_title_change(t, i))
+            new_tab.web_view.iconChanged.connect(lambda icon, i=i: self.on_icon_change(icon, i))
+            new_tab.web_view.urlChanged.connect(lambda u: self.history.append(new_tab.web_view.url().toString()))
+
+            self.tab_last_accessed[id(new_tab)] = datetime.now()
+
+        return new_tab
 
     def on_title_change(self, title, index):
         tab_text = title[:20] + "..." if len(title) > 23 else title
@@ -2987,7 +3299,7 @@ class Browser(QMainWindow):
         else:
             self.url_bar.setText("")
 
-    def on_download(self,item):
+    def on_download(self,item:QWebEngineDownloadItem):
         path,_ = QFileDialog.getSaveFileName(self,
             self.translator.tr("save_as", "Save File As"),
             item.suggestedFileName())
@@ -3012,7 +3324,71 @@ class Browser(QMainWindow):
             except:
                 pass
 
+        if self.rpc:
+            try:
+                self.rpc.close()
+            except:
+                pass
+
         event.accept()
+    def enable_autofill(self, enabled):
+        self.autofill_enabled = enabled
+        self.settings["autofill_enabled"] = enabled
+        self.save_settings()
+
+    def enable_auto_save_passwords(self, enabled):
+        self.auto_save_passwords = enabled
+        self.settings["auto_save_passwords"] = enabled
+        self.save_settings()
+        print(f"auto-save passwords: {'enabled' if enabled else 'disabled'}")
+
+    def save_password_automatically(self, site, username, password):
+        if not self.auto_save_passwords:
+            return False
+
+        if site in self.passwords:
+            reply = QMessageBox.question(
+                self,
+                "Update Password",
+                f"A password for {site} already exists.\nUpdate with new password?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                return False
+
+        self.passwords[site] = {"user": username, "pass": password}
+        self.save_passwords()
+        print(f"password auto-saved for: {site}")
+        return True
+
+    def delete_password(self, site):
+        if site in self.passwords:
+            del self.passwords[site]
+            self.save_passwords()
+            print(f"password deleted for: {site}")
+            return True
+        return False
+
+    def get_autofill_credentials(self, url):
+        if not self.autofill_enabled:
+            return None
+
+        domain = self.extract_domain(url)
+        for site, credentials in self.passwords.items():
+            if domain in site or site in domain:
+                return credentials
+        return None
+
+    def extract_domain(self, url):
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            return domain
+        except:
+            return url
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
