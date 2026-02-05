@@ -1,0 +1,7 @@
+
+{
+    "name": "square everything",
+    "description": "makes every rounded corner to be square",
+    "version": "1.0",
+    "script": "script.js"
+}
