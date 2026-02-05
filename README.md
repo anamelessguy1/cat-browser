@@ -33,7 +33,7 @@ ios = never, its not open source
 
 macos = available
 
-what you need: python/PyQt6/PyQt6-WebEngine/PyPresence
+stuff the browser uses: python/PyQt6/PyQt6-WebEngine/PyPresence/Psutil
 # how to launch source code
 ## windows:
 download python here <https://www.python.org/ftp/python/pymanager/python-manager-25.2.msix>
@@ -88,6 +88,7 @@ then the browser launches
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
 </h1>
+
 
 
 
