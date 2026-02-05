@@ -10,13 +10,14 @@ so please tell your friends that like cats to download this!!!!!!
 ## what it has to offer in the latest release
 - password saver!! (using csv files that google chrome uses too)
 - custom extension format
+- themes!
 - settings menu!!!
 - you can browser the internet!!!!
 - ability to change search engine (google/bing/duckduckgo/yahoo)
 - a custom new tab page that shows interesting facts with a search bar
 ## discord server
 
-you can download extensions in cat browser community
+you can download extensions and themes in cat browser community
 
 https://discord.gg/GrZa3BmDpW
 
@@ -41,7 +42,7 @@ open a terminal/command prompt and type "python --version"
 
 if it shows a version then you can proceed
 
-type "python -m pip install PyQt6 Pyqt6-WebEngine PyPresence"
+type "python -m pip install PyQt6 Pyqt6-WebEngine PyPresence Psutil"
 
 after that you can go to the source code folder and type "python cat_browser.py"
 
@@ -52,7 +53,7 @@ then the browser launches
 open a terminal
 and download python depending on your distro, for arch its "sudo pacman -S python"
 
-after that, type "sudo pacman -S python-pyqt6 python-pyqt6-webengine python-pypresence"
+after that, type "sudo pacman -S python-pyqt6 python-pyqt6-webengine python-pypresence python-psutil"
 
 you can search what the command is depending on your distro again
 
@@ -60,7 +61,7 @@ now go to the source code folder and type "python cat_browser.py"
 
 then the browser launches
 
-## macos: coming soon
+## macos: tutorial coming soon
 
 ## screenshots
 
@@ -87,6 +88,7 @@ then the browser launches
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
 </h1>
+
 
 
 
