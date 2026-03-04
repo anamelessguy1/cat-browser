@@ -7,15 +7,15 @@ import time
 import importlib.util
 import inspect
 import re
+import psutil
 from datetime import datetime, timedelta
 from urllib.parse import quote
-
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLineEdit, QToolBar, QTabWidget, QWidget,
     QVBoxLayout, QLabel, QTabBar, QPushButton, QStackedLayout, QFileDialog,
     QTextEdit, QHBoxLayout, QComboBox, QGridLayout, QDialog, QDialogButtonBox,
     QCheckBox, QScrollArea, QGroupBox, QFormLayout, QMessageBox, QMenu, QInputDialog,
-    QGraphicsDropShadowEffect, QWidgetAction, QSizePolicy
+    QGraphicsDropShadowEffect, QWidgetAction, QSizePolicy, QProgressBar
 )
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
@@ -41,37 +41,442 @@ if getattr(sys, 'frozen', False):
 else:
     BASE_PATH = os.path.dirname(__file__)
 
-WELCOME_IMG = os.path.join(BASE_PATH, "welcome.png")
-FONT_FILE = os.path.join(BASE_PATH, "vrc.ttf")
-BG_IMG = os.path.join(BASE_PATH, "bg.png")
-BG2_IMG = os.path.join(BASE_PATH, "bg2.png")
-FACTS_FILE = os.path.join(BASE_PATH, "facts.txt")
-LANGUAGES_FILE = os.path.join(BASE_PATH, "languages.txt")
 
-DATA_DIR = os.path.join(os.path.expanduser("~"), ".cat_browser")
-SPLASH_VIDEO = os.path.join(BASE_PATH, "splash.mp4")
+if getattr(sys, "frozen", False):
+    APP_DIR = os.path.dirname(sys.executable)
+    ASSET_DIR = getattr(sys, "_MEIPASS", APP_DIR)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
+    ASSET_DIR = APP_DIR
+
+
+def asset(name):
+    return os.path.join(ASSET_DIR, name)
+
+
+WELCOME_IMG    = asset("welcome.png")
+BG_IMG         = asset("bg.png")
+BG2_IMG        = asset("bg2.png")
+SPLASH_VIDEO   = asset("splash.mp4")
+FONT_FILE      = asset("vrc.ttf")
+LANGUAGES_FILE = asset("languages.txt")
+FACTS_FILE     = asset("facts.txt")
+
+
+DATA_DIR = os.path.join(APP_DIR, "cat_data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 EXTENSIONS_DIR = os.path.join(DATA_DIR, "extensions")
-os.makedirs(EXTENSIONS_DIR, exist_ok=True)
+FAVICON_DIR    = os.path.join(DATA_DIR, "favicons")
+THEMES_DIR     = os.path.join(DATA_DIR, "themes")
 
-FAVICON_DIR = os.path.join(DATA_DIR, "favicons")
-os.makedirs(FAVICON_DIR, exist_ok=True)
+for d in (EXTENSIONS_DIR, FAVICON_DIR, THEMES_DIR):
+    os.makedirs(d, exist_ok=True)
 
-THEMES_DIR = os.path.join(DATA_DIR, "themes")
-os.makedirs(THEMES_DIR, exist_ok=True)
-
-HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
-PASSWORDS_FILE = os.path.join(DATA_DIR, "passwords.csv")
+HISTORY_FILE       = os.path.join(DATA_DIR, "history.json")
+PASSWORDS_FILE     = os.path.join(DATA_DIR, "passwords.csv")
 SEARCH_ENGINE_FILE = os.path.join(DATA_DIR, "search_engine.json")
-SHORTCUTS_FILE = os.path.join(DATA_DIR, "shortcuts.json")
-SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
-SETUP_FILE = os.path.join(DATA_DIR, "setup_completed.json")
-SESSION_FILE = os.path.join(DATA_DIR, "session.json")
-TAB_STATE_FILE = os.path.join(DATA_DIR, "tab_states.json")
+SHORTCUTS_FILE     = os.path.join(DATA_DIR, "shortcuts.json")
+SETTINGS_FILE      = os.path.join(DATA_DIR, "settings.json")
+SETUP_FILE         = os.path.join(DATA_DIR, "setup_completed.json")
+SESSION_FILE       = os.path.join(DATA_DIR, "session.json")
+TAB_STATE_FILE     = os.path.join(DATA_DIR, "tab_states.json")
 
 DISCORD_APP_ID = "1439639890848383149"
 
+class SoundManager:
+    def __init__(self):
+        self.sounds = {}
+        self.enabled = True
+        self.mouse_pressed = False
+        
+        if getattr(sys, 'frozen', False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        self.sound_files = {
+            'tab_open': 'OpenTab.wav',
+            'click_down': 'ClickDown.wav',
+            'click_up': 'ClickUp.wav'
+        }
+        
+        self.load_sounds(base_dir)
+    
+    def load_sounds(self, base_dir):
+        for sound_name, filename in self.sound_files.items():
+            filepath = os.path.join(base_dir, filename)
+            if os.path.exists(filepath):
+                try:
+                    self.sounds[sound_name] = {
+                        'path': filepath,
+                        'player': None  
+                    }
+                    print(f"sound manager: registered {sound_name} from {filename}")
+                except Exception as e:
+                    print(f"sound manager: failed to register {filename}: {e}")
+            else:
+                print(f"sound manager: sound file not found: {filepath}")
+    
+    def get_player(self, sound_name):
+        if sound_name not in self.sounds:
+            return None
+        
+        sound_data = self.sounds[sound_name]
+        
+        if sound_data['player'] is None:
+            try:
+                player = QMediaPlayer()
+                audio_output = QAudioOutput()
+                player.setAudioOutput(audio_output)
+                audio_output.setVolume(0.7)
+                player.setSource(QUrl.fromLocalFile(sound_data['path']))
+                
+                player.mediaStatusChanged.connect(
+                    lambda status, p=player: self.on_media_status_changed(status, p)
+                )
+                
+                sound_data['player'] = {
+                    'player': player,
+                    'audio': audio_output
+                }
+            except Exception as e:
+                print(f"sound manager: error creating player for {sound_name}: {e}")
+                return None
+        
+        return sound_data['player']
+    
+    def on_media_status_changed(self, status, player):
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            for sound_name, sound_data in self.sounds.items():
+                if sound_data['player'] and sound_data['player']['player'] == player:
+                    QTimer.singleShot(100, lambda: self.cleanup_player(sound_name))
+                    break
+    
+    def cleanup_player(self, sound_name):
+        if sound_name in self.sounds and self.sounds[sound_name]['player']:
+            try:
+                player_data = self.sounds[sound_name]['player']
+                player = player_data['player']
+                
+                try:
+                    player.mediaStatusChanged.disconnect()
+                except:
+                    pass
+                
+                player.stop()
+                player.deleteLater()
+                
+                self.sounds[sound_name]['player'] = None
+            except Exception as e:
+                print(f"sound manager: error cleaning up {sound_name}: {e}")
+    
+    def play(self, sound_name):
+        if not self.enabled or sound_name not in self.sounds:
+            return
+        
+        try:
+            player_data = self.get_player(sound_name)
+            if player_data:
+                player = player_data['player']
+                audio = player_data['audio']
+                
+                player.setPosition(0)
+                player.play()
+        except Exception as e:
+            print(f"sound manager: error playing {sound_name}: {e}")
+    
+    def set_enabled(self, enabled):
+        self.enabled = enabled
+        print(f"sound manager: sounds {'enabled' if enabled else 'disabled'}")
+    
+    def set_volume(self, volume):
+        for sound_name, sound_data in self.sounds.items():
+            if sound_data['player']:
+                sound_data['player']['audio'].setVolume(volume)
+    
+    def on_mouse_press(self):
+        if not self.mouse_pressed:
+            self.mouse_pressed = True
+            self.play('click_down')
+    
+    def on_mouse_release(self):
+        if self.mouse_pressed:
+            self.mouse_pressed = False
+            self.play('click_up')
+    
+    def cleanup_all(self):
+        for sound_name in list(self.sounds.keys()):
+            self.cleanup_player(sound_name)
+
+class DownloadManager(QDialog):
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Downloads")
+        self.setMinimumSize(560, 440)
+        self.setStyleSheet("""
+            QDialog {
+                background: #1a1a1a;
+                color: white;
+            }
+            QLabel {
+                color: #e0e0e0;
+                background: transparent;
+            }
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                border: none;
+                padding: 7px 18px;
+                border-radius: 14px;
+                font-size: 12.5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: #106ebe;
+            }
+            QPushButton:pressed {
+                background: #005a9e;
+            }
+            QPushButton:disabled {
+                background: #555;
+                color: #999;
+            }
+            QScrollBar:vertical {
+                background: #2b2b2b;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555;
+                border-radius: 6px;
+                min-height: 28px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #666;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        header = QHBoxLayout()
+        title = QLabel("Downloads")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: #0078d4;")
+        header.addWidget(title)
+        header.addStretch()
+
+        self.clear_btn = QPushButton("Clear Finished")
+        self.clear_btn.clicked.connect(self.clear_finished)
+        header.addWidget(self.clear_btn)
+        layout.addLayout(header)
+
+        divider = QWidget()
+        divider.setFixedHeight(1)
+        divider.setStyleSheet("background: #333;")
+        layout.addWidget(divider)
+
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        self.container = QWidget()
+        self.container.setStyleSheet("background: transparent;")
+        self.items_layout = QVBoxLayout(self.container)
+        self.items_layout.setSpacing(6)
+        self.items_layout.setContentsMargins(0, 0, 0, 0)
+        self.items_layout.addStretch()
+
+        self.scroll.setWidget(self.container)
+        layout.addWidget(self.scroll)
+
+        self.empty_label = QLabel("No downloads yet")
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setStyleSheet("color: #666; font-size: 13px;")
+        layout.addWidget(self.empty_label)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(self.hide)
+        layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
+
+        self.download_items = []
+
+    class DownloadItemWidget(QWidget):
+
+        def __init__(self, download_request, parent_manager):
+            super().__init__(parent_manager)
+            self.download = download_request
+            self.manager = parent_manager
+            self.setFixedHeight(64)
+            self.setStyleSheet("""
+                QWidget {
+                    background: #2b2b2b;
+                    border: 1px solid #404040;
+                    border-radius: 10px;
+                }
+                QWidget:hover {
+                    border: 1px solid #0078d4;
+                }
+            """)
+
+            layout = QVBoxLayout(self)
+            layout.setContentsMargins(14, 10, 14, 10)
+            layout.setSpacing(6)
+
+            top_row = QHBoxLayout()
+
+            self.name_label = QLabel(os.path.basename(download_request.downloadFileName()))
+            self.name_label.setStyleSheet("color: white; font-size: 12px; font-weight: bold; background: transparent; border: none;")
+            top_row.addWidget(self.name_label, 1)
+
+            self.status_label = QLabel("0%")
+            self.status_label.setStyleSheet("color: #888; font-size: 11px; background: transparent; border: none;")
+            top_row.addWidget(self.status_label)
+
+            self.cancel_btn = QPushButton("✕")
+            self.cancel_btn.setFixedSize(20, 20)
+            self.cancel_btn.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    color: #d32f2f;
+                    font-size: 12px;
+                    font-weight: bold;
+                    border-radius: 14px;
+                }
+                QPushButton:hover {
+                    background: #d32f2f;
+                    color: white;
+                }
+            """)
+            self.cancel_btn.clicked.connect(self.cancel_download)
+            top_row.addWidget(self.cancel_btn)
+
+            layout.addLayout(top_row)
+
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setFixedHeight(4)
+            self.progress_bar.setRange(0, 100)
+            self.progress_bar.setValue(0)
+            self.progress_bar.setTextVisible(False)
+            self.progress_bar.setStyleSheet("""
+                QProgressBar {
+                    background: #3c3c3c;
+                    border: none;
+                    border-radius: 2px;
+                }
+                QProgressBar::chunk {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #0078d4, stop:1 #00a8ff);
+                    border-radius: 2px;
+                }
+            """)
+            layout.addWidget(self.progress_bar)
+
+            download_request.receivedBytesChanged.connect(self.update_progress)
+            download_request.isFinishedChanged.connect(self.on_finished)
+
+        def update_progress(self):
+            received = self.download.receivedBytes()
+            total = self.download.totalBytes()
+            if total > 0:
+                pct = int(received * 100 / total)
+                self.progress_bar.setValue(pct)
+                self.status_label.setText(f"{pct}%  ({self._format_bytes(received)} / {self._format_bytes(total)})")
+            else:
+                self.status_label.setText(f"{self._format_bytes(received)}")
+
+        def on_finished(self):
+            if self.download.isFinished():
+                from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest as DL
+                state = self.download.state()
+
+                if state == DL.DownloadState.DownloadCompleted:
+                    self.progress_bar.setValue(100)
+                    self.status_label.setText("✓ Complete")
+                    self.status_label.setStyleSheet("color: #4caf50; font-size: 11px; background: transparent; border: none;")
+                    self.cancel_btn.hide()
+                elif state == DL.DownloadState.DownloadCancelled:
+                    self.status_label.setText("✕ Cancelled")
+                    self.status_label.setStyleSheet("color: #d32f2f; font-size: 11px; background: transparent; border: none;")
+                    self.cancel_btn.hide()
+                elif state == DL.DownloadState.DownloadInterrupted:
+                    self.status_label.setText("⚠ Interrupted")
+                    self.status_label.setStyleSheet("color: #ff9800; font-size: 11px; background: transparent; border: none;")
+
+        def cancel_download(self):
+            self.download.cancel()
+
+        def _format_bytes(self, bytes_count):
+            if bytes_count < 1024:
+                return f"{bytes_count} B"
+            elif bytes_count < 1024 ** 2:
+                return f"{bytes_count/1024:.1f} KB"
+            elif bytes_count < 1024 ** 3:
+                return f"{bytes_count/1024**2:.1f} MB"
+            else:
+                return f"{bytes_count/1024**3:.2f} GB"
+    def add_download(self, download_request):
+        for existing_item in self.download_items:
+            if existing_item.download == download_request:
+                return
+
+        item = self.DownloadItemWidget(download_request, self)
+        self.items_layout.insertWidget(self.items_layout.count() - 1, item)
+        self.download_items.append(item)
+
+        self.empty_label.hide()
+        self.show()
+        self.raise_()
+
+        download_request.isFinishedChanged.connect(
+            lambda: self.check_auto_cleanup(item)
+        )
+
+    def check_auto_cleanup(self, item):
+        if item.download.isFinished():
+            from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest as DL
+            state = item.download.state()
+            if state in [DL.DownloadState.DownloadCompleted,
+                        DL.DownloadState.DownloadCancelled,
+                        DL.DownloadState.DownloadInterrupted]:
+                pass
+
+    def clear_finished(self):
+        from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest as DL
+        to_remove = []
+
+        for item in self.download_items:
+            if item.download.isFinished():
+                state = item.download.state()
+                if state in [DL.DownloadState.DownloadCompleted,
+                            DL.DownloadState.DownloadCancelled,
+                            DL.DownloadState.DownloadInterrupted]:
+                    to_remove.append(item)
+
+        for item in to_remove:
+            self.download_items.remove(item)
+            item.deleteLater()
+
+        if not self.download_items:
+            self.empty_label.show()
+
+    def get_active_downloads(self):
+        from PyQt6.QtWebEngineCore import QWebEngineDownloadRequest as DL
+        active = 0
+        for item in self.download_items:
+            if not item.download.isFinished():
+                active += 1
+        return active
+
+    def closeEvent(self, event):
+        event.accept()
+        self.hide()
 
 class ThemeEngine:
     def __init__(self, browser):
@@ -200,7 +605,7 @@ class ThemeEngine:
             background: #2b2b2b;
             border: none;
             border-bottom: 1px solid #3c3c3c;
-            spacing: 8px;
+            spacing: 6px;
             padding: 8px;
         }
         QPushButton {
@@ -208,8 +613,8 @@ class ThemeEngine:
             border: 1px solid #4a4a4a;
             color: white;
             padding: 2px 4px;
-            border-radius: 4px;
-            font-size: 12px;
+            border-radius:  10px;
+            font-size: 14px;
             font-weight: bold;
         }
         QPushButton:hover {
@@ -223,7 +628,7 @@ class ThemeEngine:
             border: 1px solid #4a4a4a;
             color: white;
             padding: 8px 16px;
-            border-radius: 20px;
+            border-radius: 25px;
             font-size: 14px;
         }
         QLineEdit:focus {
@@ -545,7 +950,7 @@ class CustomNewTabPage(QWidget):
         self.search_bar.setStyleSheet("""
             background-color: rgba(0,0,0,0.8);
             border: 2px solid #1b1c1c;
-            border-radius: 16px;
+            border-radius: 25px;
             padding: 12px 20px;
             font-size: 18px;
             color: white;
@@ -573,7 +978,7 @@ class CustomNewTabPage(QWidget):
             QPushButton {
                 background: rgba(60,60,60,0.8);
                 border: 2px dashed #777;
-                border-radius: 8px;
+                border-radius: 12px;
                 color: #777;
                 font-size:24px;
                 font-weight:bold;
@@ -670,7 +1075,6 @@ class CustomNewTabPage(QWidget):
         self.update_background_scaling()
 
     def update_background_scaling(self):
-        """Update the background scaling based on current size"""
         if hasattr(self, 'original_pixmap') and self.original_pixmap and self.custom_bg_applied:
             scaled_pixmap = self.original_pixmap.scaled(
                 self.size(),
@@ -699,7 +1103,7 @@ class CustomNewTabPage(QWidget):
             self.original_pixmap = pixmap
 
             scaled_pixmap = pixmap.scaled(
-                self.size(),  
+                self.size(),
                 Qt.AspectRatioMode.IgnoreAspectRatio,
                 Qt.TransformationMode.SmoothTransformation
             )
@@ -817,40 +1221,100 @@ class CustomNewTabPage(QWidget):
         q = self.search_bar.text().strip()
         if not q:
             return
+
+        parent_tab = self.parent()
+        while parent_tab and not isinstance(parent_tab, Tab):
+            parent_tab = parent_tab.parent()
+
+        if not parent_tab:
+            if self.parent_browser:
+                search_url = self.parent_browser.get_search_url(q)
+                self.parent_browser.add_tab(search_url)
+            return
+
         if self.parent_browser:
             search_url = self.parent_browser.get_search_url(q)
-            self.parent_browser.add_tab(search_url)
         else:
             from urllib.parse import quote
             if '.' in q and ' ' not in q and not q.startswith(('http://','https://')):
-                url = "https://"+q
+                search_url = "https://" + q
             else:
-                url = f"https://www.google.com/search?q={quote(q)}"
-            parent = self.parent()
-            while parent and not isinstance(parent, Browser):
-                parent = parent.parent()
-            if parent:
-                parent.add_tab(url)
+                search_url = f"https://www.google.com/search?q={quote(q)}"
+
+        layout = parent_tab.layout()
+        if layout:
+            if parent_tab.new_tab_page:
+                parent_tab.new_tab_page.setParent(None)
+                parent_tab.new_tab_page.deleteLater()
+                parent_tab.new_tab_page = None
+
+            parent_tab.web_view = InspectorWebView(parent_tab.profile, parent_tab, browser=self.parent_browser)
+            parent_tab.web_view.setUrl(QUrl(search_url))
+
+            if self.parent_browser:
+                parent_tab.web_view.urlChanged.connect(
+                    lambda u, t=parent_tab: self.parent_browser.on_url_change(t)
+                )
+                parent_tab.web_view.titleChanged.connect(
+                    lambda t, i=self.parent_browser.tabs.indexOf(parent_tab):
+                    self.parent_browser.on_title_change(t, i)
+                )
+                parent_tab.web_view.iconChanged.connect(
+                    lambda icon, i=self.parent_browser.tabs.indexOf(parent_tab):
+                    self.parent_browser.on_icon_change(icon, i)
+                )
+                parent_tab.web_view.urlChanged.connect(
+                    lambda u: self.parent_browser.history.append(parent_tab.web_view.url().toString())
+                )
+
+            layout.addWidget(parent_tab.web_view)
+
+            parent_tab.is_new_tab = False
+
+            if self.parent_browser:
+                self.parent_browser.tabs.setTabText(
+                    self.parent_browser.tabs.indexOf(parent_tab),
+                    self.parent_browser.translator.tr("loading", "Loading...")
+                )
+
+                self.parent_browser.tab_last_accessed[id(parent_tab)] = datetime.now()
 
     def show_credits(self):
+
         credits_dialog = QDialog(self)
-        credits_dialog.setWindowTitle(self.translator.tr("credits_title", "Cat Browser Credits"))
-        credits_dialog.setFixedSize(700, 600)
+        credits_dialog.setWindowTitle(self.translator.tr("credits_title", "cat browser credits"))
+        credits_dialog.setFixedSize(600, 600)
         credits_dialog.setStyleSheet("""
-            QDialog { background: #1a1a1a; color: white; }
-            QLabel { color: white; font-size: 14px; }
-            QPushButton {
-                background: #0078d4; color: white; border: none;
-                padding: 8px 16px; border-radius: 4px; font-size: 14px; font-weight: bold; margin-top: 20px;
+            QDialog {
+                background: #1a1a1a;
+                color: white;
             }
-            QPushButton:hover { background: #106ebe; }
+            QLabel {
+                color: white;
+                font-size: 14px;
+            }
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 16px;
+                font-size: 14px;
+                font-weight: bold;
+                margin-top: 20px;
+            }
+            QPushButton:hover {
+                background: #106ebe;
+            }
         """)
 
         layout = QVBoxLayout(credits_dialog)
-        title = QLabel(self.translator.tr("credits_title", "Cat Browser Credits"))
+
+        title = QLabel(self.translator.tr("credits_title", "cat browser credits"))
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #0078d4;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
+
 
         credits_text = QLabel()
         credits_text.setTextFormat(Qt.TextFormat.RichText)
@@ -859,23 +1323,28 @@ class CustomNewTabPage(QWidget):
         <div style='text-align: center;'>
         <h3>{self.translator.tr('development_team', 'Development Team')}</h3>
         <p><b>anameless_guy - Discord</b> - {self.translator.tr('developer', 'dev')}</p>
+        <p><b>monoes1 - Discord</b> - {self.translator.tr('download manager dev', 'download_manager_dev')}</p>
         <h3>{self.translator.tr('translators', 'Translators')}</h3>
         <p><b>alex.ggiscool - Discord</b></p>
-        <p><b>namelessperson.tar.xz - Discord</b></p>
-        <p><b>bojl3l - Discord</b></p>
+        <p><b>nmlsspersonn1033 - Discord / @nmlssperson1033 - Telegram</b></p>
+        <p><b>monoes1 - Discord</b></p>
+        <p><b>rizakai - Discord</b></p>
+
+
         <h3>{self.translator.tr('special_thanks', 'Special Thanks')}</h3>
         <p>PyQt6 Team  - {self.translator.tr('for_webengine', 'For the WebEngine')}</p>
+
         </div>
         """)
         credits_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(credits_text)
 
-        close_btn = QPushButton(self.translator.tr("close", "Close"))
+        close_text = self.translator.tr("close", "Close")
+        close_btn = QPushButton(close_text)
         close_btn.clicked.connect(credits_dialog.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         credits_dialog.exec()
-
 
 class InspectorWebPage(QWebEnginePage):
     def __init__(self, profile, parent):
@@ -994,7 +1463,7 @@ class InspectorWebView(QWebEngineView):
                 color: white;
                 border: none;
                 padding: 8px 16px;
-                border-radius: 4px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
             }
@@ -1045,33 +1514,39 @@ class InspectorWebView(QWebEngineView):
             self.inspector_text.setText("No element inspected yet.\nClick 'Inspect Element' and then click on any element on the page.")
 
 class Tab(QWidget):
-    def __init__(self, profile, url="https://www.google.com", is_new_tab=False, browser=None, translator=None, theme_engine=None):
+    def __init__(self, profile, url=None, is_new_tab=False, parent_browser=None, translator=None, theme_engine=None):
         super().__init__()
         self.is_new_tab = is_new_tab
         self.web_view = None
         self.profile = profile
-        self.main_browser = browser
+        self.main_browser = parent_browser
         self.translator = translator
         self.theme_engine = theme_engine
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0,0,0,0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+
+        if not is_new_tab and self.web_view:
+            self.web_view.urlChanged.connect(self.on_url_changed)
+            self.web_view.loadFinished.connect(self.on_page_loaded)
 
         if is_new_tab:
             self.new_tab_page = CustomNewTabPage(self.main_browser, self.translator, theme_engine)
             layout.addWidget(self.new_tab_page)
             self.web_view = None
+
         elif url and url.startswith("settings://"):
             label = QLabel("Invalid tab type")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             layout.addWidget(label)
             self.web_view = None
             self.new_tab_page = None
+
         else:
             self.web_view = InspectorWebView(profile, self, browser=self.main_browser)
             self.web_view.setUrl(QUrl(url) if url else QUrl("https://www.google.com"))
-
+            self.optimize_webview()
             if self.web_view.page():
                 self.web_view.page().fullScreenRequested.connect(self.handle_fullscreen_request)
 
@@ -1079,6 +1554,34 @@ class Tab(QWidget):
             self.new_tab_page = None
 
         self.setLayout(layout)
+
+    def inject_password_detection(self):
+        script = """
+            document.addEventListener('submit', function(e) {
+                const form = e.target;
+                const inputs = form.querySelectorAll('input');
+                let formData = {};
+
+                inputs.forEach(input => {
+                    if (input.type === 'password' && input.value) {
+                        formData.password = input.value;
+                        const usernameInput = form.querySelector('input[type="text"], input[type="email"], input[name*="user"]');
+                        if (usernameInput) {
+                            formData.username = usernameInput.value;
+                        }
+                    }
+                });
+
+                if (formData.password && formData.username) {
+                    window.external.invoke(JSON.stringify({
+                        type: 'password_submission',
+                        data: formData
+                    }));
+                }
+            }, true);
+        """
+
+        self.web_view.page().runJavaScript(script)
 
     def handle_fullscreen_request(self, request):
         request.accept()
@@ -1090,6 +1593,26 @@ class Tab(QWidget):
             self.main_browser.showNormal()
             if hasattr(self.main_browser, 'nav_toolbar'):
                 self.main_browser.nav_toolbar.show()
+
+
+    def optimize_webview(self):
+        if not getattr(self, "web_view", None):
+            return
+        page = self.web_view.page()
+        settings = page.settings()
+
+        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, False)
+
+        profile = QWebEngineProfile.defaultProfile()
+        def clear_cache():
+            profile.clearHttpCache()
+            profile.clearAllVisitedLinks()
+        QTimer.singleShot(1000 * 60 * 10, clear_cache)
+        page.setBackgroundColor(Qt.GlobalColor.transparent)
+
 
 class SetupWizard(QDialog):
     finished = Signal()
@@ -1120,7 +1643,7 @@ class SetupWizard(QDialog):
                 color: white;
                 border: none;
                 padding: 10px 20px;
-                border-radius: 6px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
                 min-width: 100px;
@@ -1173,7 +1696,7 @@ class SetupWizard(QDialog):
                 background: #2d2d2d;
                 color: white;
                 border: 2px solid #404040;
-                border-radius: 8px;
+                border-radius: 14px;
                 padding: 10px;
                 font-size: 16px;
             }
@@ -1202,7 +1725,7 @@ class SetupWizard(QDialog):
                 background: #2d2d2d;
                 color: white;
                 border: 2px solid #404040;
-                border-radius: 8px;
+                border-radius: 14px;
                 padding: 10px;
                 font-size: 16px;
             }
@@ -1250,7 +1773,7 @@ class SetupWizard(QDialog):
                 color: white;
                 border: none;
                 padding: 12px 24px;
-                border-radius: 6px;
+                border-radius: 14px;
                 font-size: 16px;
                 font-weight: bold;
                 min-width: 120px;
@@ -1351,7 +1874,7 @@ class SetupWizard(QDialog):
                 color: white;
                 border: none;
                 padding: 10px 20px;
-                border-radius: 6px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
                 margin-top: 20px;
@@ -1465,8 +1988,8 @@ class SetupWizard(QDialog):
     def show_credits(self):
 
         credits_dialog = QDialog(self)
-        credits_dialog.setWindowTitle(self.translator.tr("credits_title", "Cat Browser Credits"))
-        credits_dialog.setFixedSize(700, 600)
+        credits_dialog.setWindowTitle(self.translator.tr("credits_title", "cat browser credits"))
+        credits_dialog.setFixedSize(600, 600)
         credits_dialog.setStyleSheet("""
             QDialog {
                 background: #1a1a1a;
@@ -1481,7 +2004,7 @@ class SetupWizard(QDialog):
                 color: white;
                 border: none;
                 padding: 8px 16px;
-                border-radius: 4px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
                 margin-top: 20px;
@@ -1493,7 +2016,7 @@ class SetupWizard(QDialog):
 
         layout = QVBoxLayout(credits_dialog)
 
-        title = QLabel(self.translator.tr("credits_title", "Cat Browser Credits"))
+        title = QLabel(self.translator.tr("credits_title", "cat browser credits"))
         title.setStyleSheet("font-size: 24px; font-weight: bold; color: #0078d4;")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -1506,10 +2029,13 @@ class SetupWizard(QDialog):
         <div style='text-align: center;'>
         <h3>{self.translator.tr('development_team', 'Development Team')}</h3>
         <p><b>anameless_guy - Discord</b> - {self.translator.tr('developer', 'dev')}</p>
+        <p><b>monoes1 - Discord</b> - {self.translator.tr('download manager dev', 'download_manager_dev')}</p>
         <h3>{self.translator.tr('translators', 'Translators')}</h3>
         <p><b>alex.ggiscool - Discord</b></p>
-        <p><b>namelessperson.tar.xz - Discord</b></p>
-        <p><b>bojl3l - Discord</b></p>
+        <p><b>nmlsspersonn1033 - Discord / @nmlssperson1033 - Telegram</b></p>
+        <p><b>monoes1 - Discord</b></p>
+        <p><b>rizakai - Discord</b></p>
+
 
         <h3>{self.translator.tr('special_thanks', 'Special Thanks')}</h3>
         <p>PyQt6 Team  - {self.translator.tr('for_webengine', 'For the WebEngine')}</p>
@@ -1641,7 +2167,7 @@ class AddShortcutDialog(QDialog):
                 border: 1px solid #555;
                 color: white;
                 padding: 8px;
-                border-radius: 4px;
+                border-radius: 14px;
                 font-size: 14px;
             }
             QLineEdit:focus { border: 1px solid #0078d4; }
@@ -1650,7 +2176,7 @@ class AddShortcutDialog(QDialog):
                 color: white;
                 border: none;
                 padding: 8px 16px;
-                border-radius: 4px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
             }
@@ -1736,7 +2262,7 @@ class ShortcutWidget(QWidget):
         self.icon_label.setStyleSheet("""
             QLabel {
                 background: transparent;
-                border-radius: 6px;
+                border-radius: 14px;
             }
         """)
 
@@ -1798,6 +2324,7 @@ class ModernTabBar(QTabBar):
         super().__init__()
         self.setDrawBase(False)
         self.setExpanding(False)
+        self.setMovable(True)
 
     def tabSizeHint(self, index):
         return QSize(200, 35)
@@ -1905,39 +2432,127 @@ class SettingsTab(QWidget):
         self.browser = browser
         self.translator = browser.translator
 
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #1a1a1a;
+            }
+        """)
+
         self.main_widget = QWidget()
+        self.main_widget.setStyleSheet("background-color: #1a1a1a;")
         self.main_layout = QVBoxLayout(self.main_widget)
         self.main_layout.setContentsMargins(10,10,10,10)
         self.main_layout.setSpacing(15)
 
         title = QLabel(self.translator.tr("settings", "Settings"))
-        title.setStyleSheet("color:white;font-size:24px;font-weight:bold;")
+        title.setStyleSheet("""
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: transparent;
+            padding: 5px;
+        """)
         self.main_layout.addWidget(title)
 
+        version_label = QLabel("version: 0.6.1")
+        version_label.setStyleSheet("""
+            color: #b0b0b0;
+            font-size: 12px;
+            font-weight: normal;
+            background-color: transparent;
+            padding: 2px;
+        """)
+        self.main_layout.addWidget(version_label)
+
         tab_count_label = QLabel(self.translator.tr("tabs_count", "{}").format(self.browser.tabs.count()))
-        tab_count_label.setStyleSheet("color:white;font-size:16px;")
+        tab_count_label.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
         self.main_layout.addWidget(tab_count_label)
 
-        general_group = QGroupBox(self.translator.tr("general", "General Settings"))
-        general_group.setStyleSheet("""
+        self.ram_label = QLabel("RAM: 0 MB")
+        self.ram_label.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
+        self.main_layout.addWidget(self.ram_label)
+
+        self.version = QLabel("0.6.1")
+        self.version.setStyleSheet("""
+            color: #e0e0e0;
+            font-size: 16px;
+            background-color: transparent;
+        """)
+
+        self.ram_timer = QTimer()
+        self.ram_timer.timeout.connect(self.update_ram_usage)
+        self.ram_timer.start(1000)
+
+        group_box_style = """
             QGroupBox {
                 color: white;
                 font-size: 16px;
                 font-weight: bold;
-                border: 2px solid #555;
+                border: 2px solid #444;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
+                background-color: #2a2a2a;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
+                color: #ffffff;
+                background-color: transparent;
             }
-        """)
+        """
+
+        checkbox_style = """
+            QCheckBox {
+                color: #e0e0e0;
+                font-size: 14px;
+                spacing: 8px;
+                background-color: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 2px solid #555;
+                border-radius: 14px;
+                background: #3c3c3c;
+            }
+            QCheckBox::indicator:checked {
+                background: #0078d4;
+                border: 2px solid #0078d4;
+            }
+            QCheckBox::indicator:checked:hover {
+                background: #106ebe;
+                border: 2px solid #106ebe;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #777;
+            }
+        """
+
+        general_group = QGroupBox(self.translator.tr("general", "General Settings"))
+        general_group.setStyleSheet(group_box_style)
         general_layout = QFormLayout(general_group)
+        general_layout.setSpacing(10)
+
+        label_style = """
+            QLabel {
+                color: #e0e0e0;
+                background-color: transparent;
+                padding: 3px;
+            }
+        """
 
         language_label = QLabel(self.translator.tr("language", "Language:"))
+        language_label.setStyleSheet(label_style)
         self.language_combo = QComboBox()
         self.language_combo.setStyleSheet("""
             QComboBox {
@@ -1947,6 +2562,9 @@ class SettingsTab(QWidget):
                 border-radius: 5px;
                 padding: 5px;
                 min-width: 150px;
+            }
+            QComboBox:hover {
+                border: 1px solid #666;
             }
             QComboBox::drop-down {
                 border: none;
@@ -1978,6 +2596,7 @@ class SettingsTab(QWidget):
         general_layout.addRow(language_label, self.language_combo)
 
         search_label = QLabel(self.translator.tr("search_engine", "Search Engine:"))
+        search_label.setStyleSheet(label_style)
         self.search_combo = QComboBox()
         self.search_combo.setStyleSheet(self.language_combo.styleSheet())
 
@@ -1993,7 +2612,9 @@ class SettingsTab(QWidget):
         general_layout.addRow(search_label, self.search_combo)
 
         theme_label = QLabel(self.translator.tr("theme", "Theme:"))
+        theme_label.setStyleSheet(label_style)
         theme_container = QWidget()
+        theme_container.setStyleSheet("background-color: transparent;")
         theme_container_layout = QVBoxLayout(theme_container)
         theme_container_layout.setContentsMargins(0,0,0,0)
         theme_container_layout.setSpacing(5)
@@ -2013,67 +2634,65 @@ class SettingsTab(QWidget):
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         theme_container_layout.addWidget(self.theme_combo)
 
-
         general_layout.addRow(theme_label, theme_container)
         self.main_layout.addWidget(general_group)
 
+        sound_group = QGroupBox(self.translator.tr("sound_settings", "Sound Effects"))
+        sound_group.setStyleSheet(group_box_style)
+        sound_layout = QVBoxLayout(sound_group)
+        sound_layout.setSpacing(8)
+
+        self.sound_checkbox = QCheckBox(self.translator.tr("enable_sounds", "Enable Sound Effects"))
+        self.sound_checkbox.setChecked(self.browser.settings.get("sound_enabled", True))
+        self.sound_checkbox.setStyleSheet(checkbox_style)
+        self.sound_checkbox.stateChanged.connect(self.on_sound_setting_changed)
+        sound_layout.addWidget(self.sound_checkbox)
+
+        self.main_layout.addWidget(sound_group)
+
         startup_group = QGroupBox(self.translator.tr("startup_settings", "Startup Settings"))
-        startup_group.setStyleSheet(general_group.styleSheet())
+        startup_group.setStyleSheet(group_box_style)
         startup_layout = QVBoxLayout(startup_group)
+        startup_layout.setSpacing(8)
 
         self.welcome_checkbox = QCheckBox(self.translator.tr("show_welcome", "Show welcome screen on startup"))
         self.welcome_checkbox.setChecked(self.browser.settings.get("show_welcome_screen", True))
-        self.welcome_checkbox.setStyleSheet("""
-            QCheckBox {
-                color: white;
-                font-size: 14px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border: 2px solid #555;
-                border-radius: 3px;
-                background: #3c3c3c;
-            }
-            QCheckBox::indicator:checked {
-                background: #0078d4;
-                border: 2px solid #0078d4;
-            }
-            QCheckBox::indicator:checked:hover {
-                background: #106ebe;
-                border: 2px solid #106ebe;
-            }
-            QCheckBox::indicator:hover {
-                border: 2px solid #777;
-            }
-        """)
+        self.welcome_checkbox.setStyleSheet(checkbox_style)
         self.welcome_checkbox.stateChanged.connect(self.on_welcome_setting_changed)
         startup_layout.addWidget(self.welcome_checkbox)
 
         self.restore_session_checkbox = QCheckBox(self.translator.tr("restore_session", "Restore tabs from previous session"))
         self.restore_session_checkbox.setChecked(self.browser.settings.get("restore_session", True))
-        self.restore_session_checkbox.setStyleSheet(self.welcome_checkbox.styleSheet())
+        self.restore_session_checkbox.setStyleSheet(checkbox_style)
         self.restore_session_checkbox.stateChanged.connect(self.on_restore_session_changed)
         startup_layout.addWidget(self.restore_session_checkbox)
 
         self.main_layout.addWidget(startup_group)
 
         memory_group = QGroupBox(self.translator.tr("memory_settings", "Memory Settings"))
-        memory_group.setStyleSheet(general_group.styleSheet())
+        memory_group.setStyleSheet(group_box_style)
         memory_layout = QVBoxLayout(memory_group)
+        memory_layout.setSpacing(8)
 
         self.memory_saver_checkbox = QCheckBox(self.translator.tr("memory_saver", "Memory Saver (unloads inactive tabs after 5 minutes)"))
         self.memory_saver_checkbox.setChecked(self.browser.settings.get("memory_saver", False))
-        self.memory_saver_checkbox.setStyleSheet(self.welcome_checkbox.styleSheet())
+        self.memory_saver_checkbox.setStyleSheet(checkbox_style)
         self.memory_saver_checkbox.stateChanged.connect(self.on_memory_saver_changed)
         memory_layout.addWidget(self.memory_saver_checkbox)
 
         self.main_layout.addWidget(memory_group)
 
         extensions_group = QGroupBox(self.translator.tr("extensions", "Extensions"))
-        extensions_group.setStyleSheet(general_group.styleSheet())
+        extensions_group.setStyleSheet(group_box_style)
         extensions_layout = QVBoxLayout(extensions_group)
+        extensions_layout.setSpacing(10)
+
+        self.extensions_enabled_checkbox = QCheckBox(self.translator.tr("enable_extensions", "Enable Extensions"))
+        extensions_enabled = self.browser.settings.get("extensions_enabled", True)
+        self.extensions_enabled_checkbox.setChecked(extensions_enabled)
+        self.extensions_enabled_checkbox.setStyleSheet(checkbox_style)
+        self.extensions_enabled_checkbox.stateChanged.connect(self.on_extensions_enabled_changed)
+        extensions_layout.addWidget(self.extensions_enabled_checkbox)
 
         self.ext_text = QTextEdit()
         self.ext_text.setReadOnly(True)
@@ -2081,45 +2700,79 @@ class SettingsTab(QWidget):
         self.ext_text.setStyleSheet("""
             QTextEdit {
                 background: #2b2b2b;
-                color: white;
-                border: 1px solid #555;
+                color: #e0e0e0;
+                border: 1px solid #444;
                 border-radius: 5px;
-                padding: 5px;
+                padding: 8px;
                 font-size: 12px;
+                selection-background-color: #0078d4;
+            }
+            QScrollBar:vertical {
+                background: #2b2b2b;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #555;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #666;
             }
         """)
         extensions_layout.addWidget(self.ext_text)
-        self.update_extensions_view()
-        self.main_layout.addWidget(extensions_group)
 
-        passwords_group = QGroupBox(self.translator.tr("passwords", "Passwords"))
-        passwords_group.setStyleSheet(general_group.styleSheet())
-        passwords_layout = QVBoxLayout(passwords_group)
+        ext_buttons_layout = QHBoxLayout()
 
-        pw_buttons_layout = QHBoxLayout()
-        self.import_btn = QPushButton(self.translator.tr("import_csv", "Import CSV"))
-        self.export_btn = QPushButton(self.translator.tr("export_csv", "Export CSV"))
+        self.reload_ext_btn = QPushButton(self.translator.tr("reload_extensions", "Reload Extensions"))
 
-        self.import_btn.setStyleSheet("""
+        button_style = """
             QPushButton {
                 background: #0078d4;
                 color: white;
                 border: none;
                 padding: 8px 16px;
-                border-radius: 4px;
+                border-radius: 14px;
                 font-size: 14px;
                 font-weight: bold;
+                margin-right: 5px;
             }
             QPushButton:hover { background: #106ebe; }
             QPushButton:pressed { background: #005a9e; }
-        """)
-        self.export_btn.setStyleSheet(self.import_btn.styleSheet())
+            QPushButton:disabled {
+                background: #555;
+                color: #999;
+            }
+        """
+
+        self.reload_ext_btn.setStyleSheet(button_style)
+        self.reload_ext_btn.clicked.connect(self.reload_extensions)
+
+        ext_buttons_layout.addWidget(self.reload_ext_btn)
+        ext_buttons_layout.addStretch()
+
+        extensions_layout.addLayout(ext_buttons_layout)
+        self.main_layout.addWidget(extensions_group)
+
+        passwords_group = QGroupBox(self.translator.tr("passwords", "Passwords"))
+        passwords_group.setStyleSheet(group_box_style)
+        passwords_layout = QVBoxLayout(passwords_group)
+        passwords_layout.setSpacing(10)
+
+        pw_buttons_layout = QHBoxLayout()
+        self.import_btn = QPushButton(self.translator.tr("import_csv", "Import CSV"))
+        self.export_btn = QPushButton(self.translator.tr("export_csv", "Export CSV"))
+
+        self.import_btn.setStyleSheet(button_style)
+        self.export_btn.setStyleSheet(button_style)
 
         self.import_btn.clicked.connect(self.import_csv)
         self.export_btn.clicked.connect(self.export_csv)
 
         pw_buttons_layout.addWidget(self.import_btn)
         pw_buttons_layout.addWidget(self.export_btn)
+        pw_buttons_layout.addStretch()
         passwords_layout.addLayout(pw_buttons_layout)
 
         self.pw_text = QTextEdit()
@@ -2131,8 +2784,9 @@ class SettingsTab(QWidget):
         self.main_layout.addWidget(passwords_group)
 
         history_group = QGroupBox(self.translator.tr("history", "History"))
-        history_group.setStyleSheet(general_group.styleSheet())
+        history_group.setStyleSheet(group_box_style)
         history_layout = QVBoxLayout(history_group)
+        history_layout.setSpacing(10)
 
         self.hist_text = QTextEdit()
         self.hist_text.setReadOnly(True)
@@ -2177,6 +2831,70 @@ class SettingsTab(QWidget):
 
         self.setLayout(main_layout)
 
+        self.update_extensions_view()
+        self.update_extension_buttons_state()
+
+    def on_sound_setting_changed(self, state):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.browser.settings["sound_enabled"] = enabled
+        self.browser.save_settings()
+        if hasattr(self.browser, 'sound_manager'):
+            self.browser.sound_manager.set_enabled(enabled)
+
+    def update_pw_view(self):
+        s = ""
+        for site, info in self.browser.passwords.items():
+            s += f"{site} - {info['user']} / {info['pass']}\n"
+        self.pw_text.setText(s)
+
+        if hasattr(self, 'delete_buttons_layout'):
+            while self.delete_buttons_layout.count():
+                item = self.delete_buttons_layout.takeAt(0)
+                if item.widget():
+                    item.widget().deleteLater()
+        else:
+            self.delete_buttons_layout = QVBoxLayout()
+            passwords_group = self.findChild(QGroupBox, "Passwords")
+            passwords_group.layout().addLayout(self.delete_buttons_layout)
+
+        for site in self.browser.passwords.keys():
+            delete_btn = QPushButton(f"Delete: {site}")
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 14px;
+                    font-size: 12px;
+                    margin: 2px;
+                }
+                QPushButton:hover { background: #b71c1c; }
+                QPushButton:pressed { background: #9a0007; }
+            """)
+            delete_btn.clicked.connect(lambda checked, s=site: self.delete_password(s))
+            self.delete_buttons_layout.addWidget(delete_btn)
+
+    def delete_password(self, site):
+        reply = QMessageBox.question(
+            self,
+            "Delete Password",
+            f"Are you sure you want to delete the password for:\n{site}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if self.browser.delete_password(site):
+                self.update_pw_view()
+                self.show_status_message(f"Password deleted for: {site}")
+            else:
+                self.show_status_message(f"No password found for: {site}")
+
+    def update_ram_usage(self):
+        process = psutil.Process(os.getpid())
+        ram_mb = process.memory_info().rss / 1024**2
+        self.ram_label.setText(f"RAM: {ram_mb:.1f} MB")
+
     def on_language_changed(self, lang):
         if self.translator.set_language(lang):
             self.browser.save_settings()
@@ -2201,17 +2919,64 @@ class SettingsTab(QWidget):
         self.browser.settings["restore_session"] = (state == Qt.CheckState.Checked.value)
         self.browser.save_settings()
 
-    def update_extensions_view(self):
-        if not self.browser.extensions:
-            self.ext_text.setText(self.translator.tr("no_extensions", "No extensions loaded."))
+    def on_extensions_enabled_changed(self, state):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.browser.settings["extensions_enabled"] = enabled
+        self.browser.save_settings()
+        self.browser.profile.scripts().clear()
+
+        if enabled:
+            self.browser.inject_extensions_into_profile()
+            print("extension engine: extensions enabled and injected")
         else:
-            ext_info = self.translator.tr("loaded_extensions", "Loaded Extensions:\n\n")
+            print("extension engine: extensions disabled and cleared")
+
+        self.update_extension_buttons_state()
+        self.update_extensions_view()
+
+        if enabled:
+            self.show_status_message("Extensions enabled")
+        else:
+            self.show_status_message("Extensions disabled")
+
+    def update_extension_buttons_state(self):
+        enabled = self.browser.settings.get("extensions_enabled", True)
+        self.reload_ext_btn.setEnabled(enabled)
+        self.ext_text.setEnabled(enabled)
+
+    def show_status_message(self, message):
+        print(f"status: {message}")
+
+    def update_extensions_view(self):
+        enabled = self.browser.settings.get("extensions_enabled", True)
+
+        if not self.browser.extensions:
+            if enabled:
+                self.ext_text.setText(self.translator.tr("no_extensions", "No extensions loaded."))
+            else:
+                self.ext_text.setText(self.translator.tr("extensions_disabled", "Extensions are currently disabled."))
+        else:
+            ext_info = ""
+            if not enabled:
+                ext_info += self.translator.tr("extensions_disabled_note", "⚠️ Extensions are disabled (will not execute)\n\n")
+
+            ext_info += self.translator.tr("loaded_extensions", "Loaded Extensions:\n\n")
             for ext_name, ext_data in self.browser.extensions.items():
-                ext_info += f"• {ext_name}\n"
+                status = "✓" if enabled else "✗"
+                ext_info += f"{status} {ext_name}\n"
                 ext_info += self.translator.tr("description", "  Description: {}").format(ext_data.get('description', 'No description')) + "\n"
                 ext_info += self.translator.tr("version", "  Version: {}").format(ext_data.get('version', '1.0')) + "\n"
                 ext_info += f"  Script: {ext_data.get('script', 'No script')}\n\n"
             self.ext_text.setText(ext_info)
+
+    def reload_extensions(self):
+        if not self.browser.settings.get("extensions_enabled", True):
+            return
+
+        if hasattr(self.browser, 'reload_extensions'):
+            self.browser.reload_extensions()
+        self.update_extensions_view()
+        self.show_status_message("Extensions reloaded")
 
     def update_pw_view(self):
         s = ""
@@ -2256,11 +3021,16 @@ class Browser(QMainWindow):
         self.watchdog_timer.timeout.connect(self.check_browser_health)
         self.watchdog_timer.start(30000)
         self.translator = Translator()
+
         self.search_engines = {
             "Google": "https://www.google.com/search?q={}",
             "Bing": "https://www.bing.com/search?q={}",
             "DuckDuckGo": "https://duckduckgo.com/?q={}",
-            "Yahoo": "https://search.yahoo.com/search?p={}"
+            "Yahoo": "https://search.yahoo.com/search?p={}",
+            "Roblox (funni)": "https://www.roblox.com/discover/?Keyword={}",
+            "Yandex": "https://yandex.com/search?text={}",
+            "GPrivate": "https://gprivate.com/search/?q=#gsc.q={}",
+            "YouTube (because yes)": "https://www.youtube.com/results?search_query={}"
         }
 
         self.themes = {}
@@ -2292,10 +3062,16 @@ class Browser(QMainWindow):
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.AllowWindowActivationFromJavaScript, True)
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.ShowScrollBars, True)
-        default_settings.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, False)
-
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, True)
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
-
+        self.profile.setHttpUserAgent(self.profile.httpUserAgent())
+        default_settings = self.profile.settings()
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
+        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+        self.profile.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
+        self.profile.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
         self.memory_saver_enabled = self.settings.get("memory_saver", False)
         self.tab_last_accessed = {}
         self.memory_saver_timer = QTimer()
@@ -2308,14 +3084,44 @@ class Browser(QMainWindow):
         self.theme_engine = ThemeEngine(self)
         self.load_extensions()
         self.inject_extensions_into_profile()
-
         self.setup_ui()
         self.apply_current_theme()
-
+        self.download_manager = DownloadManager(self)
+        self.profile.downloadRequested.connect(self.on_download)
         if self.settings.get("restore_session", True):
             self.restore_session()
         else:
             self.add_tab(is_new_tab=True)
+        app = QApplication.instance()
+        app.installEventFilter(self)
+        self.sound_manager = SoundManager()
+        self.sound_manager.set_enabled(self.settings.get("sound_enabled", True))
+
+    def eventFilter(self, obj, event):
+        """Global event filter for mouse events"""
+        if hasattr(self, 'sound_manager') and self.settings.get("sound_enabled", True):
+            if event.type() == QMouseEvent.Type.MouseButtonPress:
+                self.sound_manager.on_mouse_press()
+            elif event.type() == QMouseEvent.Type.MouseButtonRelease:
+                self.sound_manager.on_mouse_release()
+        return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, event):
+        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            if event.key() == Qt.Key.Key_T:
+                self.add_tab(is_new_tab=True)
+            elif event.key() == Qt.Key.Key_W:
+                self.close_tab_with_checks(self.tabs.currentIndex())
+            elif event.key() == Qt.Key.Key_L:
+                self.url_bar.setFocus()
+                self.url_bar.selectAll()
+            elif event.key() == Qt.Key.Key_R:
+                if self.current_browser():
+                    self.current_browser().reload()
+            elif event.key() == Qt.Key.Key_Tab:
+                next_index = (self.tabs.currentIndex() + 1) % self.tabs.count()
+                self.tabs.setCurrentIndex(next_index)
+        super().keyPressEvent(event)
 
     def check_browser_health(self):
         try:
@@ -2409,7 +3215,11 @@ class Browser(QMainWindow):
         self.update_url_bar_placeholder()
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         self.nav_toolbar.addWidget(self.url_bar)
-
+        dl_btn = QPushButton("↓")
+        dl_btn.setFixedSize(32, 32)
+        dl_btn.setToolTip("Downloads")
+        dl_btn.clicked.connect(self.show_downloads)
+        self.nav_toolbar.addWidget(dl_btn)
         central = QWidget()
         central.setLayout(main_layout)
         self.setCentralWidget(central)
@@ -2775,6 +3585,10 @@ class Browser(QMainWindow):
             new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
             i = self.tabs.addTab(new_tab, self.translator.tr("new_tab", "New Tab"))
             self.tabs.setCurrentIndex(i)
+        
+        
+            if hasattr(self, 'sound_manager'):
+                self.sound_manager.play('tab_open')
 
             if hasattr(self.theme_engine, 'apply_theme_to_new_tab') and new_tab.new_tab_page:
                 self.theme_engine.apply_theme_to_new_tab(new_tab.new_tab_page)
@@ -2787,6 +3601,9 @@ class Browser(QMainWindow):
             new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
             i = self.tabs.addTab(new_tab, self.translator.tr("loading", "Loading..."))
             self.tabs.setCurrentIndex(i)
+        
+            if hasattr(self, 'sound_manager'):
+                self.sound_manager.play('tab_open')
 
             if new_tab.web_view:
                 new_tab.web_view.parent_browser = self
@@ -2831,7 +3648,8 @@ class Browser(QMainWindow):
             "language": "English",
             "theme": self.translator.tr("default_theme", "Default Theme"),
             "memory_saver": False,
-            "restore_session": True
+            "restore_session": True,
+            "sound_enabled": True,
         }
         if os.path.exists(SETTINGS_FILE):
             try:
@@ -2964,7 +3782,15 @@ class Browser(QMainWindow):
                     except Exception as e:
                         print(f"extension engine: error loading extension {ext_folder}: {e}")
 
+        if self.settings.get("extensions_enabled", True):
+            self.inject_extensions_into_profile()
+
     def inject_extensions_into_profile(self):
+        self.profile.scripts().clear()
+        if not self.settings.get("extensions_enabled", True):
+            print("extension engine: extensions are disabled, skipping injection")
+            return
+
         for ext_name, ext_data in self.extensions.items():
             script_content = ext_data.get('script_content', '')
             if script_content:
@@ -2972,7 +3798,9 @@ class Browser(QMainWindow):
                 script.setSourceCode(script_content)
                 script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentReady)
                 script.setRunsOnSubFrames(True)
+                script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
                 self.profile.scripts().insert(script)
+                print(f"extension engine: injected {ext_name}")
 
     def load_passwords(self):
         passwords = {}
@@ -3017,22 +3845,6 @@ class Browser(QMainWindow):
     def create_tab_view(self):
         web_view = InspectorWebView(self.profile, browser=self)
         return web_view
-
-    def add_tab(self, url=None, is_new_tab=False):
-        new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
-        i = self.tabs.addTab(new_tab,
-            self.translator.tr("new_tab", "New Tab") if is_new_tab else self.translator.tr("loading", "Loading..."))
-        self.tabs.setCurrentIndex(i)
-
-        if not is_new_tab and hasattr(new_tab, 'web_view') and new_tab.web_view:
-            new_tab.web_view.urlChanged.connect(lambda u, t=new_tab: self.on_url_change(t))
-            new_tab.web_view.titleChanged.connect(lambda t, i=i: self.on_title_change(t, i))
-            new_tab.web_view.iconChanged.connect(lambda icon, i=i: self.on_icon_change(icon, i))
-            new_tab.web_view.urlChanged.connect(lambda u: self.history.append(new_tab.web_view.url().toString()))
-
-            self.tab_last_accessed[id(new_tab)] = datetime.now()
-
-        return new_tab
 
     def on_title_change(self, title, index):
         tab_text = title[:20] + "..." if len(title) > 23 else title
@@ -3095,14 +3907,34 @@ class Browser(QMainWindow):
         else:
             self.url_bar.setText("")
 
-    def on_download(self,item:QWebEngineDownloadRequest):
-        path,_ = QFileDialog.getSaveFileName(self,
+    def on_download(self, item: QWebEngineDownloadRequest):
+        if hasattr(item, '_being_handled') and item._being_handled:
+            return
+
+        item._being_handled = True
+
+        suggested = item.suggestedFileName()
+        downloads_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+
+        path, _ = QFileDialog.getSaveFileName(
+            self,
             self.translator.tr("save_as", "Save File As"),
-            item.suggestedFileName())
+            os.path.join(downloads_dir, suggested)
+        )
+
         if path:
             item.setDownloadDirectory(os.path.dirname(path))
             item.setDownloadFileName(os.path.basename(path))
             item.accept()
+
+            self.download_manager.add_download(item)
+        else:
+            item.cancel()
+
+    def show_downloads(self):
+        self.download_manager.show()
+        self.download_manager.raise_()
+
 
     def closeEvent(self, event):
         print(f"cat browser closing (plz use it again)")
@@ -3127,6 +3959,18 @@ class Browser(QMainWindow):
                 pass
 
         event.accept()
+
+    def extract_domain(self, url):
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc
+            if domain.startswith('www.'):
+                domain = domain[4:]
+            return domain
+        except:
+            return url
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
