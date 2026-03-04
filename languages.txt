@@ -69,7 +69,8 @@ auto_save_passwords=Auto save passwords
 enable_extensions=Enable extensions
 reload_extensions=Reload extensions
 extensions_disabled_note=Disabled Extensions:
-
+sound_settings=Sound settings
+enable_sounds=Enable sounds
 
 [Français]
 welcome_title=cat browser (réel)
@@ -141,6 +142,8 @@ auto_save_passwords=Enregistrement automatique des mots de passe
 enable_extensions=Activer les extensions
 reload_extensions=Actualiser les extensions
 extensions_disabled_note=Extensions désactivées:
+sound_settings=Paramètres audio
+enable_sounds=Activer les sons
 
 [arabic]
 welcome_title=متصفح القط (حقيقي)
@@ -212,6 +215,8 @@ auto_save_passwords=حفظ كلمات المرور تلقائيًا
 enable_extensions=تفعيل الإضافات
 reload_extensions=إعادة تحميل الإضافات
 extensions_disabled_note=تعطيل الإضافات:
+sound_settings=إعدادات الصوت
+enable_sounds=تفعيل الأصوات
 
 [Русский]
 welcome_title=котобраузер (реально)
@@ -282,6 +287,8 @@ auto_save_passwords=автоматически сохранять пароли
 enable_extensions=включить расширения
 reload_extensions=перезагрузить расширения
 extensions_disabled_note=выключенные расширения:
+sound_settings=настройки звука
+enable_sounds=включить звук
 
 [DeutschDE]
 welcome_title=Katzen browser (echt)
@@ -352,6 +359,8 @@ auto_save_passwords=automatisch passwörter speichern
 enable_extensions=erweiterungen einschalten
 reload_extensions=erweiterungen wiederladen
 extensions_disabled_note=ausgeschaltete erweiterungen:
+sound_settings=klang einstellungen
+enable_sounds=klang einschalten
 
 [Română]
 welcome_title=browser de pisici (real)
@@ -423,6 +432,8 @@ auto_save_passwords=salveaza parolele automat
 enable_extensions=activeaza extensiile
 reload_extensions=reincarca extensiile
 extensions_disabled_note=extensi deactivate:
+sound_settings=Setări sunet
+enable_sounds=Activare sunete
 
 [Polski]
 welcome_title=kocia przeglądarka (prawdziwa)
@@ -494,6 +505,8 @@ auto_save_passwords=automatyczne zapisywanie haseł
 enable_extensions=włączanie rozszerzeń
 reload_extensions=przeładowywanie rozszerzeń
 extensions_disabled_note=wyłączanie rozszerzeń:
+sound_settings=Ustawienia dźwięku
+enable_sounds=Włącz dźwięk
 
 [Brazilian Portuguese]
 welcome_title=Cat Browser
@@ -565,3 +578,5 @@ auto_save_passwords=Salvar senhas automaticamente
 enable_extensions=Ativar extensões
 reload_extensions=Recarregar extensões
 extensions_disabled_note=Extensões desativadas:
+sound_settings=Configurações de som
+enable_sounds=Ativar sons
