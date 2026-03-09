@@ -198,11 +198,11 @@ class SoundManager:
             self.cleanup_player(sound_name)
 
 class DownloadManager(QDialog):
-
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, translator=None):
         super().__init__(parent)
+        self.translator = translator
         self.setWindowTitle("Downloads")
-        self.setMinimumSize(560, 440)
+        self.setMinimumSize(560, 600)       
         self.setStyleSheet("""
             QDialog {
                 background: #1a1a1a;
@@ -254,12 +254,12 @@ class DownloadManager(QDialog):
         layout.setSpacing(12)
 
         header = QHBoxLayout()
-        title = QLabel("Downloads")
+        title = QLabel(self.translator.tr("downloads", "Downloads"))
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: #0078d4;")
         header.addWidget(title)
         header.addStretch()
 
-        self.clear_btn = QPushButton("Clear Finished")
+        self.clear_btn = QPushButton(self.translator.tr("clear_finished", "Clear finished"))
         self.clear_btn.clicked.connect(self.clear_finished)
         header.addWidget(self.clear_btn)
         layout.addLayout(header)
@@ -283,12 +283,12 @@ class DownloadManager(QDialog):
         self.scroll.setWidget(self.container)
         layout.addWidget(self.scroll)
 
-        self.empty_label = QLabel("No downloads yet")
+        self.empty_label = QLabel(self.translator.tr("no_downloads_yet", "No downloads yet"))
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.setStyleSheet("color: #666; font-size: 13px;")
         layout.addWidget(self.empty_label)
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(self.translator.tr("close", "Close"))
         close_btn.clicked.connect(self.hide)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
 
@@ -386,15 +386,15 @@ class DownloadManager(QDialog):
 
                 if state == DL.DownloadState.DownloadCompleted:
                     self.progress_bar.setValue(100)
-                    self.status_label.setText("✓ Complete")
+                    self.status_label.setText(self.translator.tr("finished", "Finished"))
                     self.status_label.setStyleSheet("color: #4caf50; font-size: 11px; background: transparent; border: none;")
                     self.cancel_btn.hide()
                 elif state == DL.DownloadState.DownloadCancelled:
-                    self.status_label.setText("✕ Cancelled")
+                    self.status_label.setText(self.translator.tr("cancelled", "Cancelled"))
                     self.status_label.setStyleSheet("color: #d32f2f; font-size: 11px; background: transparent; border: none;")
                     self.cancel_btn.hide()
                 elif state == DL.DownloadState.DownloadInterrupted:
-                    self.status_label.setText("⚠ Interrupted")
+                    self.status_label.setText(self.translator.tr("interrupted", "Interrupted"))
                     self.status_label.setStyleSheet("color: #ff9800; font-size: 11px; background: transparent; border: none;")
 
         def cancel_download(self):
@@ -2442,7 +2442,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(title)
 
-        version_label = QLabel("version: 0.6.1")
+        version_label = QLabel("version: 0.7.0")
         version_label.setStyleSheet("""
             color: #b0b0b0;
             font-size: 12px;
@@ -2468,7 +2468,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(self.ram_label)
 
-        self.version = QLabel("0.6.1")
+        self.version = QLabel("0.7.0")
         self.version.setStyleSheet("""
             color: #e0e0e0;
             font-size: 16px;
@@ -2655,6 +2655,12 @@ class SettingsTab(QWidget):
         self.restore_session_checkbox.stateChanged.connect(self.on_restore_session_changed)
         startup_layout.addWidget(self.restore_session_checkbox)
 
+        self.vertical_tabs_checkbox = QCheckBox(self.translator.tr("vertical_tabs", "Vertical tabs"))
+        self.vertical_tabs_checkbox.setChecked(self.browser.settings.get("vertical_tabs", False))
+        self.vertical_tabs_checkbox.setStyleSheet(checkbox_style)
+        self.vertical_tabs_checkbox.stateChanged.connect(self.on_vertical_tabs_changed)
+        startup_layout.addWidget(self.vertical_tabs_checkbox)
+
         self.main_layout.addWidget(startup_group)
 
         memory_group = QGroupBox(self.translator.tr("memory_settings", "Memory Settings"))
@@ -2775,15 +2781,47 @@ class SettingsTab(QWidget):
         history_group.setStyleSheet(group_box_style)
         history_layout = QVBoxLayout(history_group)
         history_layout.setSpacing(10)
-
+        self.clear_history_btn = QPushButton(self.translator.tr("clear_history", "Clear History"))
+        self.clear_history_btn.setStyleSheet(button_style)
+        self.clear_history_btn.clicked.connect(self.clear_history)
+        history_layout.addWidget(self.clear_history_btn)
         self.hist_text = QTextEdit()
         self.hist_text.setReadOnly(True)
         self.hist_text.setMaximumHeight(150)
         self.hist_text.setStyleSheet(self.ext_text.styleSheet())
         history_layout.addWidget(self.hist_text)
         self.update_history_view()
+        self.clear_history_btn.setFixedWidth(190)
         self.main_layout.addWidget(history_group)
+        reset_group = QGroupBox("Reset")
+        reset_group.setStyleSheet(group_box_style)
+        reset_layout = QVBoxLayout(reset_group)
+        reset_layout.setSpacing(8)
 
+        self.reset_settings_btn = QPushButton(self.translator.tr("restore_default_settings", "Restore default settings"))
+        self.reset_settings_btn.setStyleSheet(button_style)
+        self.reset_settings_btn.clicked.connect(self.reset_settings)
+        reset_layout.addWidget(self.reset_settings_btn)
+        self.reset_settings_btn.setFixedWidth(340)
+        self.clear_data_btn = QPushButton(self.translator.tr("clear_all_data", "Clear all data"))
+        self.clear_data_btn.setStyleSheet("""
+            QPushButton {
+                background: #c0392b;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 14px;
+                font-size: 14px;
+                font-weight: bold;
+                margin-right: 5px;
+            }
+            QPushButton:hover { background: #e74c3c; }
+            QPushButton:pressed { background: #922b21; }
+        """)
+        self.clear_data_btn.clicked.connect(self.clear_all_data)
+        reset_layout.addWidget(self.clear_data_btn)
+        self.clear_data_btn.setFixedWidth(220)
+        self.main_layout.addWidget(reset_group)
         self.main_layout.addStretch()
 
         scroll = QScrollArea()
@@ -2821,7 +2859,48 @@ class SettingsTab(QWidget):
 
         self.update_extensions_view()
         self.update_extension_buttons_state()
+    def clear_history(self):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(self.translator.tr("clear_history", "Clear History"))
+        msg.setText(self.translator.tr("clear_history_msg", "i bet you're doing this so that no one knows you gooned"))
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            self.browser.history = []
+            if os.path.exists(HISTORY_FILE):
+                os.remove(HISTORY_FILE)
+            self.update_history_view()
 
+    def reset_settings(self):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(self.translator.tr("restore_default_settings", "Restore Default Settings"))
+        msg.setText(self.translator.tr("restore_default_settings_msg", "this will reset your settings to default, no data will be deleted, are you sure"))
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            for f in [SETTINGS_FILE, SEARCH_ENGINE_FILE]:
+                if os.path.exists(f):
+                    os.remove(f)
+            self.browser.settings = self.browser.load_settings()
+            self.browser.current_search_engine = self.browser.load_search_engine()
+            self.browser.update_url_bar_placeholder()
+            done = QMessageBox(self)
+            done.setWindowTitle(self.translator.tr("done", "Done"))
+            done.setText(self.translator.tr("settings_restored", "Settings restored to default."))
+            done.exec()
+
+    def clear_all_data(self):
+        msg = QMessageBox(self)
+        msg.setWindowTitle(self.translator.tr("clear_all_data", "Clear All Data"))
+        msg.setText(self.translator.tr("clear_all_data_msg", "this will delete basically everything, your cookies, your logged in accounts, and your extensions and themes and settings, are you sure vroo?"))
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if msg.exec() == QMessageBox.StandardButton.Yes:
+            import shutil
+            if os.path.exists(DATA_DIR):
+                shutil.rmtree(DATA_DIR)
+            done = QMessageBox(self)
+            done.setWindowTitle(self.translator.tr("done", "Done"))
+            done.setText(self.translator.tr("clear_all_data_done", "All data cleared. The browser will now close."))
+            done.exec()
+            self.browser.close()
     def on_sound_setting_changed(self, state):
         enabled = (state == Qt.CheckState.Checked.value)
         self.browser.settings["sound_enabled"] = enabled
@@ -2907,6 +2986,24 @@ class SettingsTab(QWidget):
         self.browser.settings["restore_session"] = (state == Qt.CheckState.Checked.value)
         self.browser.save_settings()
 
+    def on_vertical_tabs_changed(self, state):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.browser.settings["vertical_tabs"] = enabled
+        self.browser.save_settings()
+        if hasattr(self.browser, 'vtab_bar') and hasattr(self.browser, 'tabs'):
+            vtab = self.browser.vtab_bar
+            tabs = self.browser.tabs
+            if enabled:
+                for entry in list(vtab.entries):
+                    entry.deleteLater()
+                vtab.entries.clear()
+                for i in range(tabs.count()):
+                    label = tabs.tabText(i)
+                    icon = tabs.tabIcon(i)
+                    vtab.add_tab_entry(i, label, icon if not icon.isNull() else None)
+                vtab.set_current(tabs.currentIndex())
+            vtab.setVisible(enabled)
+            tabs.tabBar().setVisible(not enabled)
     def on_extensions_enabled_changed(self, state):
         enabled = (state == Qt.CheckState.Checked.value)
         self.browser.settings["extensions_enabled"] = enabled
@@ -3000,6 +3097,237 @@ class SettingsTab(QWidget):
                     writer.writerow([name,"",info["user"],info["pass"],""])
             self.update_pw_view()
 
+class VerticalTabEntry(QWidget):
+    clicked = Signal(int)
+    close_requested = Signal(int)
+
+    def __init__(self, index, title, icon=None, parent=None):
+        super().__init__(parent)
+        self.tab_index = index
+        self._selected = False
+        self._hovered = False
+        self.setFixedHeight(40)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMouseTracking(True)
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(8, 4, 4, 4)
+        row.setSpacing(8)
+
+        self.icon_label = QLabel()
+        self.icon_label.setFixedSize(18, 18)
+        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.icon_label.setStyleSheet("background: transparent; border: none;")
+        row.addWidget(self.icon_label)
+
+        self.title_label = QLabel(title)
+        self.title_label.setStyleSheet("background: transparent; border: none; color: #ccc; font-size: 12px;")
+        self.title_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        row.addWidget(self.title_label, 1)
+
+        self.close_btn = QPushButton("×")
+        self.close_btn.setFixedSize(16, 16)
+        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.setStyleSheet("""
+            QPushButton { background: transparent; border: none; color: #888; font-size: 14px; font-weight: bold; border-radius: 8px; padding: 0; }
+            QPushButton:hover { background: #c0392b; color: white; }
+        """)
+        self.close_btn.clicked.connect(lambda: self.close_requested.emit(self.tab_index))
+        row.addWidget(self.close_btn)
+
+        if icon:
+            self.set_icon(icon)
+        else:
+            self._set_fallback(title)
+        self._refresh_style()
+
+    def set_icon(self, icon):
+        if not icon.isNull():
+            self.icon_label.setPixmap(icon.pixmap(16, 16))
+            self.icon_label.setText("")
+            self.icon_label.setStyleSheet("background: transparent; border: none;")
+        else:
+            self._set_fallback(self.title_label.text())
+
+    def set_title(self, title):
+        self.title_label.setText(title)
+        if not self.icon_label.pixmap() or self.icon_label.pixmap().isNull():
+            self._set_fallback(title)
+
+    def set_selected(self, selected):
+        self._selected = selected
+        self._refresh_style()
+
+    def set_collapsed(self, collapsed):
+        self.title_label.setVisible(not collapsed)
+        self.close_btn.setVisible(not collapsed)
+
+    def _set_fallback(self, title):
+        letter = title[0].upper() if title else "?"
+        self.icon_label.setText(letter)
+        self.icon_label.setStyleSheet("background: #0078d4; color: white; font-size: 10px; font-weight: bold; border-radius: 9px; border: none;")
+
+    def _refresh_style(self):
+        if self._selected:
+            bg, border = "#2a4a6a", "border-left: 3px solid #0078d4;"
+        elif self._hovered:
+            bg, border = "#3a3a3a", "border-left: 3px solid transparent;"
+        else:
+            bg, border = "transparent", "border-left: 3px solid transparent;"
+        self.setStyleSheet(f"VerticalTabEntry {{ background: {bg}; {border} border-radius: 4px; }}")
+
+    def enterEvent(self, e):
+        self._hovered = True; self._refresh_style(); super().enterEvent(e)
+
+    def leaveEvent(self, e):
+        self._hovered = False; self._refresh_style(); super().leaveEvent(e)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit(self.tab_index)
+        super().mousePressEvent(e)
+
+
+class VerticalTabBar(QWidget):
+    tab_selected = Signal(int)
+    tab_close_requested = Signal(int)
+    new_tab_requested = Signal()
+
+    EXPANDED_WIDTH = 220
+    COLLAPSED_WIDTH = 42
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._collapsed = False
+        self.entries = []
+        self.setFixedWidth(self.EXPANDED_WIDTH)
+        self.setStyleSheet("VerticalTabBar { background: #1e1e1e; border-right: 1px solid #333; }")
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(4, 4, 4, 4)
+        outer.setSpacing(0)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 6)
+        top.setSpacing(4)
+
+        self.toggle_btn = QPushButton("«")
+        self.toggle_btn.setFixedSize(28, 28)
+        self.toggle_btn.setToolTip("Collapse sidebar")
+        self.toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.toggle_btn.setStyleSheet(self._btn_style())
+        self.toggle_btn.clicked.connect(self.toggle_collapsed)
+        top.addWidget(self.toggle_btn)
+        top.addStretch()
+
+        self.new_tab_btn = QPushButton("+")
+        self.new_tab_btn.setFixedSize(28, 28)
+        self.new_tab_btn.setToolTip("New tab (Ctrl+T)")
+        self.new_tab_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.new_tab_btn.setStyleSheet(self._btn_style())
+        self.new_tab_btn.clicked.connect(self.new_tab_requested)
+        top.addWidget(self.new_tab_btn)
+        outer.addLayout(top)
+
+        div = QWidget()
+        div.setFixedHeight(1)
+        div.setStyleSheet("background: #333;")
+        outer.addWidget(div)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("""
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical { background: #1e1e1e; width: 6px; border-radius: 3px; }
+            QScrollBar::handle:vertical { background: #444; border-radius: 3px; min-height: 20px; }
+            QScrollBar::handle:vertical:hover { background: #555; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+        """)
+
+        self._container = QWidget()
+        self._container.setStyleSheet("background: transparent;")
+        self._vbox = QVBoxLayout(self._container)
+        self._vbox.setContentsMargins(0, 4, 0, 4)
+        self._vbox.setSpacing(2)
+        self._vbox.addStretch()
+
+        scroll.setWidget(self._container)
+        outer.addWidget(scroll, 1)
+
+    def add_tab_entry(self, index, title, icon=None):
+        entry = VerticalTabEntry(index, title, icon)
+        entry.clicked.connect(self._on_clicked)
+        entry.close_requested.connect(self.tab_close_requested)
+        self._vbox.insertWidget(self._vbox.count() - 1, entry)
+        self.entries.append(entry)
+        self._reindex()
+        return entry
+
+    def remove_tab_entry(self, index):
+        entry = self._at(index)
+        if entry:
+            self.entries.remove(entry)
+            entry.deleteLater()
+            self._reindex()
+
+    def set_current(self, index):
+        for e in self.entries:
+            e.set_selected(e.tab_index == index)
+
+    def set_title(self, index, title):
+        e = self._at(index)
+        if e: e.set_title(title)
+
+    def set_icon(self, index, icon):
+        e = self._at(index)
+        if e: e.set_icon(icon)
+
+    def toggle_collapsed(self):
+        self._collapsed = not self._collapsed
+        w = self.COLLAPSED_WIDTH if self._collapsed else self.EXPANDED_WIDTH
+        self.setFixedWidth(w)
+        self.toggle_btn.setText("»" if self._collapsed else "«")
+        self.toggle_btn.setToolTip("Expand sidebar" if self._collapsed else "Collapse sidebar")
+        self.new_tab_btn.setVisible(not self._collapsed)
+        for e in self.entries:
+            e.set_collapsed(self._collapsed)
+
+    def _at(self, index):
+        for e in self.entries:
+            if e.tab_index == index:
+                return e
+        return None
+
+    def _reindex(self):
+        for i, e in enumerate(self.entries):
+            e.tab_index = i
+
+    def _on_clicked(self, index):
+        self.tab_selected.emit(index)
+
+    @staticmethod
+    def _btn_style():
+        return """
+            QPushButton { background: transparent; border: none; color: #aaa; font-size: 14px; font-weight: bold; border-radius: 6px; }
+            QPushButton:hover { background: #333; color: white; }
+            QPushButton:pressed { background: #444; }
+        """
+
+
+class _TopEdgeTracker(QWidget):
+    """Invisible 4px strip at top of window; shows hover bar when in focus mode."""
+    def __init__(self, parent, browser):
+        super().__init__(parent)
+        self.browser = browser
+        self.setMouseTracking(True)
+
+    def enterEvent(self, e):
+        if getattr(self.browser, '_tab_focused', False):
+            self.browser._show_hover_bar()
+        super().enterEvent(e)
+
+
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -3009,7 +3337,7 @@ class Browser(QMainWindow):
         self.watchdog_timer.timeout.connect(self.check_browser_health)
         self.watchdog_timer.start(30000)
         self.translator = Translator()
-
+        self.download_manager = DownloadManager(self, translator=self.translator)
         self.search_engines = {
             "Google": "https://www.google.com/search?q={}",
             "Bing": "https://www.bing.com/search?q={}",
@@ -3074,7 +3402,7 @@ class Browser(QMainWindow):
         self.inject_extensions_into_profile()
         self.setup_ui()
         self.apply_current_theme()
-        self.download_manager = DownloadManager(self)
+        self.download_manager = DownloadManager(self, translator=self.translator)
         self.profile.downloadRequested.connect(self.on_download)
         if self.settings.get("restore_session", True):
             self.restore_session()
@@ -3086,7 +3414,6 @@ class Browser(QMainWindow):
         self.sound_manager.set_enabled(self.settings.get("sound_enabled", True))
 
     def eventFilter(self, obj, event):
-        """Global event filter for mouse events"""
         if hasattr(self, 'sound_manager') and self.settings.get("sound_enabled", True):
             if event.type() == QMouseEvent.Type.MouseButtonPress:
                 self.sound_manager.on_mouse_press()
@@ -3173,29 +3500,24 @@ class Browser(QMainWindow):
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] += " --enable-vulkan"
 
     def setup_ui(self):
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0,0,0,0)
-        main_layout.setSpacing(0)
-
-        self.tabs = QTabWidget()
-        self.tabs.setTabBar(ModernTabBar())
-        self.tabs.setTabsClosable(True)
-        self.tabs.setStyleSheet("QTabBar::close-button {width:0;height:0;image:none;}")
-        self.tabs.tabCloseRequested.connect(self.close_tab_with_checks)
-        self.tabs.currentChanged.connect(self.update_url_bar)
-        main_layout.addWidget(self.tabs)
+        central = QWidget()
+        root_layout = QVBoxLayout(central)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
 
         self.nav_toolbar = QToolBar()
         self.nav_toolbar.setMovable(False)
-        main_layout.insertWidget(0, self.nav_toolbar)
+        root_layout.addWidget(self.nav_toolbar)
 
-        for text,func in [("◀",lambda: self.current_browser().back() if self.current_browser() else None),
-                        ("▶",lambda: self.current_browser().forward() if self.current_browser() else None),
-                        ("↻",lambda: self.current_browser().reload() if self.current_browser() else None),
-                        ("⚙", self.open_settings_tab),
-                        ("+",lambda: self.add_tab(is_new_tab=True))]:
+        for text, func in [
+            ("◀", lambda: self.current_browser().back()    if self.current_browser() else None),
+            ("▶", lambda: self.current_browser().forward() if self.current_browser() else None),
+            ("↻", lambda: self.current_browser().reload()  if self.current_browser() else None),
+            ("⚙", self.open_settings_tab),
+            ("+", lambda: self.add_tab(is_new_tab=True)),
+        ]:
             btn = QPushButton(text)
-            btn.setFixedSize(32,32)
+            btn.setFixedSize(32, 32)
             btn.clicked.connect(func)
             self.nav_toolbar.addWidget(btn)
 
@@ -3203,14 +3525,71 @@ class Browser(QMainWindow):
         self.update_url_bar_placeholder()
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         self.nav_toolbar.addWidget(self.url_bar)
+
         dl_btn = QPushButton("↓")
         dl_btn.setFixedSize(32, 32)
         dl_btn.setToolTip("Downloads")
         dl_btn.clicked.connect(self.show_downloads)
         self.nav_toolbar.addWidget(dl_btn)
-        central = QWidget()
-        central.setLayout(main_layout)
+
+        self.focus_btn = QPushButton("⊡")
+        self.focus_btn.setFixedSize(32, 32)
+        self.focus_btn.setToolTip("Focus mode")
+        self.focus_btn.clicked.connect(self.toggle_tab_focus)
+        self.nav_toolbar.addWidget(self.focus_btn)
+
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+
+        self.vtab_bar = VerticalTabBar()
+        self.vtab_bar.tab_selected.connect(self._on_vtab_selected)
+        self.vtab_bar.tab_close_requested.connect(self.close_tab_with_checks)
+        self.vtab_bar.new_tab_requested.connect(lambda: self.add_tab(is_new_tab=True))
+        self.vtab_bar.setVisible(self.settings.get("vertical_tabs", True))
+        body.addWidget(self.vtab_bar)
+
+        self.tabs = QTabWidget()
+        self.tabs.setTabBar(ModernTabBar())
+        self.tabs.setTabsClosable(True)
+        self.tabs.setStyleSheet("QTabBar::close-button {width:0;height:0;image:none;}")
+        self.tabs.tabCloseRequested.connect(self.close_tab_with_checks)
+        self.tabs.currentChanged.connect(self._on_tab_changed_internal)
+        self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", True))
+        body.addWidget(self.tabs, 1)
+
+        body_widget = QWidget()
+        body_widget.setLayout(body)
+        root_layout.addWidget(body_widget, 1)
+
         self.setCentralWidget(central)
+
+        self._hover_bar = QWidget(central)
+        self._hover_bar.setFixedHeight(36)
+        self._hover_bar.setStyleSheet("background: rgba(30,30,30,220); border-bottom: 1px solid #444;")
+        hb_layout = QHBoxLayout(self._hover_bar)
+        hb_layout.setContentsMargins(8, 2, 8, 2)
+        hb_layout.addStretch()
+        hb_exit_btn = QPushButton("x")
+        hb_exit_btn.setFixedHeight(24)
+        hb_exit_btn.setStyleSheet("QPushButton { background: #333; color: #ccc; border: 0px solid #555; border-radius: 14px; padding: 0 10px; } QPushButton:hover { background: #444; color: white; }")
+        hb_exit_btn.clicked.connect(self.toggle_tab_focus)
+        hb_layout.addWidget(hb_exit_btn)
+        hb_layout.addStretch()
+        self._hover_bar.hide()
+        self._hover_bar.raise_()
+
+        self._focus_tracker = _TopEdgeTracker(central, self)
+        self._focus_tracker.setGeometry(0, 0, central.width(), 4)
+        self._focus_tracker.raise_()
+
+    def _on_tab_changed_internal(self, index):
+        self.update_url_bar()
+        if hasattr(self, 'vtab_bar'):
+            self.vtab_bar.set_current(index)
+
+    def _on_vtab_selected(self, index):
+        self.tabs.setCurrentIndex(index)
 
     def load_themes(self):
         print(f"theme system: loading themes")
@@ -3301,7 +3680,8 @@ class Browser(QMainWindow):
         if isinstance(tab, SettingsTab):
             if self.tabs.count() <= 1:
                 self.add_tab(is_new_tab=True)
-
+            if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+                self.vtab_bar.remove_tab_entry(i)
             self.tabs.removeTab(i)
         else:
             self.close_tab(i)
@@ -3506,6 +3886,8 @@ class Browser(QMainWindow):
                     if tab_data.get('type') == 'settings':
                         st = SettingsTab(self)
                         i = self.tabs.addTab(st, self.translator.tr("settings", "Settings"))
+                        if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+                            self.vtab_bar.add_tab_entry(i, self.translator.tr("settings", "Settings"))
                         restored_count += 1
                     elif tab_data.get('type') == 'newtab':
                         self.add_tab(is_new_tab=True)
@@ -3528,81 +3910,87 @@ class Browser(QMainWindow):
             self.add_tab(is_new_tab=True)
 
     def close_tab(self, i):
-        if self.tabs.count() > 1:
-            tab = self.tabs.widget(i)
-            if hasattr(tab, 'web_view') and tab.web_view:
-                try:
-                    if hasattr(tab.web_view, 'page') and tab.web_view.page():
-                        tab.web_view.page().runJavaScript("""
-                            (function() {
-                                var audios = document.getElementsByTagName('audio');
-                                for (var i = 0; i < audios.length; i++) {
-                                    audios[i].pause();
-                                    audios[i].currentTime = 0;
-                                }
+        if self.tabs.count() <= 1:
+            return
 
-                                var videos = document.getElementsByTagName('video');
-                                for (var i = 0; i < videos.length; i++) {
-                                    videos[i].pause();
-                                    videos[i].currentTime = 0;
-                                }
-                            })();
-                        """)
-                except Exception as e:
-                    print(f"browser: error stopping media: {e}")
+        tab = self.tabs.widget(i)
+        if hasattr(tab, 'web_view') and tab.web_view:
+            try:
+                if hasattr(tab.web_view, 'page') and tab.web_view.page():
+                    tab.web_view.page().runJavaScript("""
+                        (function() {
+                            var audios = document.getElementsByTagName('audio');
+                            for (var i = 0; i < audios.length; i++) {
+                                audios[i].pause();
+                                audios[i].currentTime = 0;
+                            }
 
-                try:
-                    if hasattr(tab.web_view, 'setHtml'):
-                        tab.web_view.setHtml("")
-                except:
-                    pass
+                            var videos = document.getElementsByTagName('video');
+                            for (var i = 0; i < videos.length; i++) {
+                                videos[i].pause();
+                                videos[i].currentTime = 0;
+                            }
+                        })();
+                    """)
+            except Exception as e:
+                print(f"browser: error stopping media: {e}")
 
-                tab.web_view.deleteLater()
-                tab.web_view = None
+            try:
+                if hasattr(tab.web_view, 'setHtml'):
+                    tab.web_view.setHtml("")
+            except:
+                pass
 
-            tab_id = id(tab)
-            if tab_id in self.tab_last_accessed:
-                del self.tab_last_accessed[tab_id]
+            tab.web_view.deleteLater()
+            tab.web_view = None
 
-            self.remove_tab_state(i)
-            self.tabs.removeTab(i)
+        tab_id = id(tab)
+        if tab_id in self.tab_last_accessed:
+            del self.tab_last_accessed[tab_id]
+
+        self.remove_tab_state(i)
+
+        if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+            self.vtab_bar.remove_tab_entry(i)
+
+        self.tabs.removeTab(i)
 
 
     def add_tab(self, url=None, is_new_tab=False):
-        if is_new_tab:
-            new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
-            i = self.tabs.addTab(new_tab, self.translator.tr("new_tab", "New Tab"))
-            self.tabs.setCurrentIndex(i)
-        
-        
-            if hasattr(self, 'sound_manager'):
-                self.sound_manager.play('tab_open')
-
-            if hasattr(self.theme_engine, 'apply_theme_to_new_tab') and new_tab.new_tab_page:
-                self.theme_engine.apply_theme_to_new_tab(new_tab.new_tab_page)
-
-            return new_tab
-        elif url and url.startswith("settings://"):
+        if url and url.startswith("settings://"):
             self.open_settings_tab()
             return None
-        else:
-            new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
-            i = self.tabs.addTab(new_tab, self.translator.tr("loading", "Loading..."))
-            self.tabs.setCurrentIndex(i)
-        
-            if hasattr(self, 'sound_manager'):
-                self.sound_manager.play('tab_open')
 
+        new_tab = Tab(self.profile, url, is_new_tab, self, self.translator, self.theme_engine)
+
+        if is_new_tab:
+            label = self.translator.tr("new_tab", "New Tab")
+        else:
+            label = self.translator.tr("loading", "Loading...")
+
+        i = self.tabs.addTab(new_tab, label)
+        self.tabs.setCurrentIndex(i)
+
+        if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+            self.vtab_bar.add_tab_entry(i, label)
+            self.vtab_bar.set_current(i)
+
+        if hasattr(self, 'sound_manager'):
+            self.sound_manager.play('tab_open')
+
+        if is_new_tab:
+            if hasattr(self.theme_engine, 'apply_theme_to_new_tab') and new_tab.new_tab_page:
+                self.theme_engine.apply_theme_to_new_tab(new_tab.new_tab_page)
+        else:
             if new_tab.web_view:
                 new_tab.web_view.parent_browser = self
                 new_tab.web_view.urlChanged.connect(lambda u, t=new_tab: self.on_url_change(t))
-                new_tab.web_view.titleChanged.connect(lambda t, i=i: self.on_title_change(t, i))
-                new_tab.web_view.iconChanged.connect(lambda icon, i=i: self.on_icon_change(icon, i))
+                new_tab.web_view.titleChanged.connect(lambda t, idx=i: self.on_title_change(t, idx))
+                new_tab.web_view.iconChanged.connect(lambda icon, idx=i: self.on_icon_change(icon, idx))
                 new_tab.web_view.urlChanged.connect(lambda u: self.history.append(new_tab.web_view.url().toString()))
-
                 self.tab_last_accessed[id(new_tab)] = datetime.now()
 
-            return new_tab
+        return new_tab
 
     def remove_tab_state(self, tab_index):
         try:
@@ -3638,6 +4026,7 @@ class Browser(QMainWindow):
             "memory_saver": False,
             "restore_session": True,
             "sound_enabled": True,
+            "vertical_tabs": False,
         }
         if os.path.exists(SETTINGS_FILE):
             try:
@@ -3836,11 +4225,16 @@ class Browser(QMainWindow):
 
     def on_title_change(self, title, index):
         tab_text = title[:20] + "..." if len(title) > 23 else title
-        self.tabs.setTabText(index, tab_text if title else self.translator.tr("new_tab", "New Tab"))
+        display = tab_text if title else self.translator.tr("new_tab", "New Tab")
+        self.tabs.setTabText(index, display)
+        if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+            self.vtab_bar.set_title(index, display)
 
     def on_icon_change(self, icon, index):
         if not icon.isNull():
             self.tabs.setTabIcon(index, icon)
+            if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+                self.vtab_bar.set_icon(index, icon)
         else:
             self.tabs.setTabIcon(index, QIcon())
 
@@ -3849,12 +4243,17 @@ class Browser(QMainWindow):
             w = self.tabs.widget(i)
             if isinstance(w, SettingsTab):
                 self.tabs.setCurrentIndex(i)
+                if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+                    self.vtab_bar.set_current(i)
                 w.update_extensions_view()
                 return
 
         st = SettingsTab(self)
         i = self.tabs.addTab(st, self.translator.tr("settings", "Settings"))
         self.tabs.setCurrentIndex(i)
+        if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
+            self.vtab_bar.add_tab_entry(i, self.translator.tr("settings", "Settings"))
+            self.vtab_bar.set_current(i)
 
     def current_browser(self):
         tab = self.tabs.currentWidget()
@@ -3923,6 +4322,55 @@ class Browser(QMainWindow):
         self.download_manager.show()
         self.download_manager.raise_()
 
+    def toggle_tab_focus(self):
+        focused = getattr(self, '_tab_focused', False)
+        if focused:
+            self.nav_toolbar.show()
+            if hasattr(self, 'vtab_bar'):
+                self.vtab_bar.setVisible(self.settings.get("vertical_tabs", True))
+            self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", True))
+            self.focus_btn.setText("⊡")
+            self.focus_btn.setToolTip("Focus mode")
+            self._tab_focused = False
+            self._hide_hover_bar()
+        else:
+            self.nav_toolbar.hide()
+            if hasattr(self, 'vtab_bar'):
+                self.vtab_bar.hide()
+            self.tabs.tabBar().hide()
+            self.focus_btn.setText("⊟")
+            self.focus_btn.setToolTip("Exit focus mode")
+            self._tab_focused = True
+
+    def _show_hover_bar(self):
+        if hasattr(self, '_hover_bar'):
+            cw = self.centralWidget()
+            if cw:
+                self._hover_bar.setGeometry(0, 0, cw.width(), 36)
+            self._hover_bar.show()
+            self._hover_bar.raise_()
+            if hasattr(self, '_hover_hide_timer'):
+                self._hover_hide_timer.stop()
+            self._hover_hide_timer = QTimer(self)
+            self._hover_hide_timer.setSingleShot(True)
+            self._hover_hide_timer.timeout.connect(self._hide_hover_bar)
+            self._hover_bar.enterEvent = lambda e: self._hover_hide_timer.stop()
+            self._hover_bar.leaveEvent = lambda e: self._hover_hide_timer.start(800)
+            self._hover_hide_timer.start(2000)
+
+    def _hide_hover_bar(self):
+        if hasattr(self, '_hover_bar'):
+            self._hover_bar.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        cw = self.centralWidget()
+        if cw:
+            if hasattr(self, '_focus_tracker'):
+                self._focus_tracker.setGeometry(0, 0, cw.width(), 4)
+            if hasattr(self, '_hover_bar'):
+                self._hover_bar.setGeometry(0, 0, cw.width(), 36)
+
 
     def closeEvent(self, event):
         print(f"cat browser closing (plz use it again)")
@@ -3964,6 +4412,22 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = Browser()
 
+    startup_url = None
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg.startswith("http://") or arg.startswith("https://"):
+            startup_url = arg
+        else:
+            startup_url = "https://" + arg
+
+    startup_url_opened = False
+
+    def open_startup_url():
+        global startup_url_opened
+        if startup_url and not startup_url_opened:
+            startup_url_opened = True
+            main_window.add_tab(startup_url)
+
     if not os.path.exists(SETUP_FILE):
         splash = WelcomeScreen(3000)
         splash.show()
@@ -3980,6 +4444,7 @@ if __name__ == "__main__":
                     self.setup_shown = True
                     setup_wizard = SetupWizard(main_window)
                     setup_wizard.finished.connect(main_window.show)
+                    setup_wizard.finished.connect(open_startup_url)
                     setup_wizard.exec()
 
             def start_timer(self):
@@ -3994,8 +4459,10 @@ if __name__ == "__main__":
             splash = WelcomeScreen(3000)
             splash.show()
             splash.finished.connect(main_window.show)
+            splash.finished.connect(open_startup_url)
             QTimer.singleShot(3500, main_window.show)
         else:
             main_window.show()
+            open_startup_url()
 
     sys.exit(app.exec())
