@@ -84,6 +84,114 @@ TAB_STATE_FILE     = os.path.join(DATA_DIR, "tab_states.json")
 
 DISCORD_APP_ID = "1439639890848383149"
 
+class CrashDialog(QDialog):
+    def __init__(self, exception_info, parent=None):
+        super().__init__(parent)
+        self.exception_info = exception_info
+        self.setWindowTitle("error")
+        self.setFixedSize(650, 550)
+        self.setStyleSheet("""
+            QDialog {
+                background: #1a1a1a;
+                color: white;
+            }
+            QLabel {
+                color: white;
+                font-size: 14px;
+            }
+            QTextEdit {
+                background: #2b2b2b;
+                color: #ff6b6b;
+                border: 1px solid #444;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 11px;
+            }
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 14px;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background: #106ebe;
+            }
+            QPushButton:pressed {
+                background: #005a9e;
+            }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        title = QLabel("cat browser crash handler")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ff6b6b;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        desc = QLabel("something went wrong but dont worry you can restart and it will be fine!!!!!!\nif the same error happens again, consider reporting this bug in the discord server, cat browser community and paste the log")
+        desc.setWordWrap(True)
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc)
+
+        error_label = QLabel("error details:")
+        error_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addWidget(error_label)
+
+        self.error_text = QTextEdit()
+        self.error_text.setReadOnly(True)
+        self.error_text.setText(exception_info)
+        layout.addWidget(self.error_text)
+
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        self.restart_btn = QPushButton("restart cat browser")
+        self.restart_btn.clicked.connect(self.restart_browser)
+        button_layout.addWidget(self.restart_btn)
+
+        self.close_btn = QPushButton("ignore and keep using")
+        self.close_btn.setStyleSheet("""
+            QPushButton {
+                background: #c0392b;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 14px;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background: #e74c3c;
+            }
+            QPushButton:pressed {
+                background: #922b21;
+            }
+        """)
+        self.close_btn.clicked.connect(self.reject)
+        button_layout.addWidget(self.close_btn)
+
+        layout.addLayout(button_layout)
+
+    def restart_browser(self):
+        self.accept()
+        if getattr(sys, 'frozen', False):
+            executable = sys.executable
+        else:
+            executable = sys.executable
+            script = sys.argv[0]
+        QApplication.quit()
+        if getattr(sys, 'frozen', False):
+            os.execl(executable, executable, *sys.argv[1:])
+        else:
+            os.execl(executable, executable, script, *sys.argv[1:])
+
 class SoundManager:
     def __init__(self):
         self.sounds = {}
@@ -398,15 +506,15 @@ class DownloadManager(QDialog):
 
                 if state == DL.DownloadState.DownloadCompleted:
                     self.progress_bar.setValue(100)
-                    self.status_label.setText(self.translator.tr("finished", "Finished"))
+                    self.status_label.setText(self.manager.translator.tr("finished", "Finished"))
                     self.status_label.setStyleSheet("color: #4caf50; font-size: 11px; background: transparent; border: none;")
                     self.cancel_btn.hide()
                 elif state == DL.DownloadState.DownloadCancelled:
-                    self.status_label.setText(self.translator.tr("cancelled", "Cancelled"))
+                    self.status_label.setText(self.manager.translator.tr("cancelled", "Cancelled"))
                     self.status_label.setStyleSheet("color: #d32f2f; font-size: 11px; background: transparent; border: none;")
                     self.cancel_btn.hide()
                 elif state == DL.DownloadState.DownloadInterrupted:
-                    self.status_label.setText(self.translator.tr("interrupted", "Interrupted"))
+                    self.status_label.setText(self.manager.translator.tr("interrupted", "Interrupted"))
                     self.status_label.setStyleSheet("color: #ff9800; font-size: 11px; background: transparent; border: none;")
 
         def cancel_download(self):
@@ -551,7 +659,7 @@ class ThemeEngine:
                 QApplication.instance().setStyleSheet("")
 
                 self.theme_images = self.load_all_theme_images()
-                print(f"  Loaded {len(self.theme_images)} image(s) from theme")
+                print(f"loaded {len(self.theme_images)} image(s) from theme")
 
                 if theme_data.get('has_qss', False) and 'css_content' in theme_data:
                     print(f"theme system: applying qss theme")
@@ -720,8 +828,7 @@ class ThemeEngine:
             "forward": "▶",
             "reload": "↻",
             "settings": "⚙",
-            "plus": "+",
-            "magnify": "a"
+            "plus": "+"
         }
 
         try:
@@ -746,8 +853,7 @@ class ThemeEngine:
             "▶": "forward",
             "↻": "reload",
             "⚙": "settings",
-            "+": "plus",
-            "🔍": "magnify"
+            "+": "plus"
         }
 
         try:
@@ -1051,7 +1157,7 @@ class CustomNewTabPage(QWidget):
                 favicon_view.load(QUrl(favicon_url))
 
         except Exception as e:
-            print(f"Error setting up favicon download: {e}")
+            print(f"error setting up favicon download: {e}")
 
     def save_favicon(self, view, domain, ok):
         try:
@@ -1063,7 +1169,7 @@ class CustomNewTabPage(QWidget):
                     pixmap.save(favicon_path, "PNG")
                     self.display_shortcuts()
         except Exception as e:
-            print(f"Error saving favicon: {e}")
+            print(f"error saving favicon: {e}")
         finally:
             view.deleteLater()
 
@@ -1363,8 +1469,9 @@ class InspectorWebPage(QWebEnginePage):
             if self.parent_browser:
                 new_tab = self.parent_browser.add_tab("about:blank")
                 if hasattr(new_tab, 'web_view') and new_tab.web_view:
-                    return new_tab.web_view
-            return InspectorWebView(self.profile())
+                    return new_tab.web_view.page()  
+            new_view = InspectorWebView(self.profile())
+            return new_view.page() 
         return super().createWindow(type)
 
 class InspectorWebView(QWebEngineView):
@@ -1604,7 +1711,7 @@ class Tab(QWidget):
         settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, False)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, False)
+        settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
 
         profile = QWebEngineProfile.defaultProfile()
         def clear_cache():
@@ -2454,7 +2561,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(title)
 
-        version_label = QLabel("version: 0.7.0")
+        version_label = QLabel("version: 0.7.6")
         version_label.setStyleSheet("""
             color: #b0b0b0;
             font-size: 12px;
@@ -2480,7 +2587,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(self.ram_label)
 
-        self.version = QLabel("0.7.0")
+        self.version = QLabel("0.7.6")
         self.version.setStyleSheet("""
             color: #e0e0e0;
             font-size: 16px;
@@ -2674,6 +2781,37 @@ class SettingsTab(QWidget):
         startup_layout.addWidget(self.vertical_tabs_checkbox)
 
         self.main_layout.addWidget(startup_group)
+
+        crash_group = QGroupBox(self.translator.tr("crash_handler_settings", "Crash Handler"))
+        crash_group.setStyleSheet(group_box_style)
+        crash_layout = QVBoxLayout(crash_group)
+        crash_layout.setSpacing(8)
+
+        self.crash_handler_checkbox = QCheckBox(self.translator.tr("enable_crash_handler", "Enable crash handler (catch crashes instead of closing)"))
+        self.crash_handler_checkbox.setChecked(self.browser.settings.get("crash_handler_enabled", True))
+        self.crash_handler_checkbox.setStyleSheet(checkbox_style)
+        self.crash_handler_checkbox.stateChanged.connect(self.on_crash_handler_changed)
+        crash_layout.addWidget(self.crash_handler_checkbox)
+
+        crash_handler_desc = QLabel(self.translator.tr("crash_handler_desc", "When enabled, catches crashes and prevents the browser from closing unexpectedly. When disabled, browser will close on fatal errors."))
+        crash_handler_desc.setWordWrap(True)
+        crash_handler_desc.setStyleSheet("color: #999; font-size: 12px; background: transparent; margin-left: 24px;")
+        crash_layout.addWidget(crash_handler_desc)
+
+        crash_layout.addSpacing(10)
+
+        self.crash_dialog_checkbox = QCheckBox(self.translator.tr("show_crash_dialog", "Show crash dialog popup"))
+        self.crash_dialog_checkbox.setChecked(self.browser.settings.get("crash_dialog_enabled", True))
+        self.crash_dialog_checkbox.setStyleSheet(checkbox_style)
+        self.crash_dialog_checkbox.stateChanged.connect(self.on_crash_dialog_changed)
+        crash_layout.addWidget(self.crash_dialog_checkbox)
+
+        crash_dialog_desc = QLabel(self.translator.tr("crash_dialog_desc", "When enabled, shows a popup dialog with crash details and options to save logs. When disabled, crashes are only logged to console."))
+        crash_dialog_desc.setWordWrap(True)
+        crash_dialog_desc.setStyleSheet("color: #999; font-size: 12px; background: transparent; margin-left: 24px;")
+        crash_layout.addWidget(crash_dialog_desc)
+
+        self.main_layout.addWidget(crash_group)
 
         memory_group = QGroupBox(self.translator.tr("memory_settings", "Memory Settings"))
         memory_group.setStyleSheet(group_box_style)
@@ -2871,6 +3009,25 @@ class SettingsTab(QWidget):
 
         self.update_extensions_view()
         self.update_extension_buttons_state()
+
+    def on_crash_handler_changed(self, state):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.browser.settings["crash_handler_enabled"] = enabled
+        self.browser.save_settings()
+        print(f"settings: crash handler {'enabled' if enabled else 'disabled'}")
+        if not enabled:
+            QMessageBox.warning(
+                self,
+                "warning",
+                "disabling the crash handler will make the browser close even when small errors happen"
+        )
+
+    def on_crash_dialog_changed(self, state):
+        enabled = (state == Qt.CheckState.Checked.value)
+        self.browser.settings["crash_dialog_enabled"] = enabled
+        self.browser.save_settings()
+        print(f"settings: crash dialog {'enabled' if enabled else 'disabled'}")
+
     def clear_history(self):
         msg = QMessageBox(self)
         msg.setWindowTitle(self.translator.tr("clear_history", "Clear History"))
@@ -2919,55 +3076,6 @@ class SettingsTab(QWidget):
         self.browser.save_settings()
         if hasattr(self.browser, 'sound_manager'):
             self.browser.sound_manager.set_enabled(enabled)
-
-    def update_pw_view(self):
-        s = ""
-        for site, info in self.browser.passwords.items():
-            s += f"{site} - {info['user']} / {info['pass']}\n"
-        self.pw_text.setText(s)
-
-        if hasattr(self, 'delete_buttons_layout'):
-            while self.delete_buttons_layout.count():
-                item = self.delete_buttons_layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
-        else:
-            self.delete_buttons_layout = QVBoxLayout()
-            passwords_group = self.findChild(QGroupBox, "Passwords")
-            passwords_group.layout().addLayout(self.delete_buttons_layout)
-
-        for site in self.browser.passwords.keys():
-            delete_btn = QPushButton(f"Delete: {site}")
-            delete_btn.setStyleSheet("""
-                QPushButton {
-                    background: #d32f2f;
-                    color: white;
-                    border: none;
-                    padding: 6px 12px;
-                    border-radius: 14px;
-                    font-size: 12px;
-                    margin: 2px;
-                }
-                QPushButton:hover { background: #b71c1c; }
-                QPushButton:pressed { background: #9a0007; }
-            """)
-            delete_btn.clicked.connect(lambda checked, s=site: self.delete_password(s))
-            self.delete_buttons_layout.addWidget(delete_btn)
-
-    def delete_password(self, site):
-        reply = QMessageBox.question(
-            self,
-            "Delete Password",
-            f"Are you sure you want to delete the password for:\n{site}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            if self.browser.delete_password(site):
-                self.update_pw_view()
-                self.show_status_message(f"Password deleted for: {site}")
-            else:
-                self.show_status_message(f"No password found for: {site}")
 
     def update_ram_usage(self):
         process = psutil.Process(os.getpid())
@@ -3055,9 +3163,9 @@ class SettingsTab(QWidget):
         else:
             ext_info = ""
             if not enabled:
-                ext_info += self.translator.tr("extensions_disabled_note", "⚠️ Extensions are disabled (will not execute)\n\n")
+                ext_info += self.translator.tr("extensions_disabled_note", "Extensions are disabled (will not execute)\n\n")
 
-            ext_info += self.translator.tr("loaded_extensions", "Loaded Extensions:\n\n")
+            ext_info += self.translator.tr("loaded_extensions", "Loaded Extensions: \n\n")
             for ext_name, ext_data in self.browser.extensions.items():
                 status = "✓" if enabled else "✗"
                 ext_info += f"{status} {ext_name}\n"
@@ -3312,8 +3420,7 @@ class VerticalTabBar(QWidget):
         return None
 
     def _reindex(self):
-        for i, e in enumerate(self.entries):
-            e.tab_index = i
+        pass 
 
     def _on_clicked(self, index):
         self.tab_selected.emit(index)
@@ -3328,7 +3435,6 @@ class VerticalTabBar(QWidget):
 
 
 class _TopEdgeTracker(QWidget):
-    """Invisible 4px strip at top of window; shows hover bar when in focus mode."""
     def __init__(self, parent, browser):
         super().__init__(parent)
         self.browser = browser
@@ -3425,6 +3531,13 @@ class Browser(QMainWindow):
         self.sound_manager = SoundManager()
         self.sound_manager.set_enabled(self.settings.get("sound_enabled", True))
 
+    def reload_extensions(self):
+        self.extensions = {}
+        self.load_extensions()
+        if self.settings.get("extensions_enabled", True):
+            self.inject_extensions_into_profile()
+        print("settings: extensions reloaded")
+
     def eventFilter(self, obj, event):
         if hasattr(self, 'sound_manager') and self.settings.get("sound_enabled", True):
             if event.type() == QMouseEvent.Type.MouseButtonPress:
@@ -3433,22 +3546,41 @@ class Browser(QMainWindow):
                 self.sound_manager.on_mouse_release()
         return super().eventFilter(obj, event)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event):    
         if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             if event.key() == Qt.Key.Key_T:
                 self.add_tab(is_new_tab=True)
+                event.accept()
             elif event.key() == Qt.Key.Key_W:
                 self.close_tab_with_checks(self.tabs.currentIndex())
+                event.accept()
             elif event.key() == Qt.Key.Key_L:
                 self.url_bar.setFocus()
                 self.url_bar.selectAll()
+                event.accept()
             elif event.key() == Qt.Key.Key_R:
                 if self.current_browser():
                     self.current_browser().reload()
+                event.accept()
             elif event.key() == Qt.Key.Key_Tab:
                 next_index = (self.tabs.currentIndex() + 1) % self.tabs.count()
                 self.tabs.setCurrentIndex(next_index)
-        super().keyPressEvent(event)
+                event.accept()
+            else:
+                super().keyPressEvent(event)
+        elif event.modifiers() == (Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.AltModifier):
+            if event.key() == Qt.Key.Key_E:
+                self._crash_test_step = 1
+                event.accept()
+            elif event.key() == Qt.Key.Key_B and getattr(self, '_crash_test_step', 0) == 1:
+                print("crash handler test")
+                raise RuntimeError("this is a test crash caused by pressing shift + alt + e + b")
+            else:
+                self._crash_test_step = 0
+                super().keyPressEvent(event)
+        else:
+            self._crash_test_step = 0
+            super().keyPressEvent(event)
 
     def check_browser_health(self):
         try:
@@ -3473,7 +3605,7 @@ class Browser(QMainWindow):
                 continue
 
             tab = self.tabs.widget(i)
-            if hasattr(tab, 'browser') and tab.browser:
+            if hasattr(tab, 'web_view') and tab.web_view:
                 tab_id = id(tab)
                 last_access = self.tab_last_accessed.get(tab_id)
 
@@ -3558,7 +3690,7 @@ class Browser(QMainWindow):
         self.vtab_bar.tab_selected.connect(self._on_vtab_selected)
         self.vtab_bar.tab_close_requested.connect(self.close_tab_with_checks)
         self.vtab_bar.new_tab_requested.connect(lambda: self.add_tab(is_new_tab=True))
-        self.vtab_bar.setVisible(self.settings.get("vertical_tabs", True))
+        self.vtab_bar.setVisible(self.settings.get("vertical_tabs", False))
         body.addWidget(self.vtab_bar)
 
         self.tabs = QTabWidget()
@@ -3567,7 +3699,7 @@ class Browser(QMainWindow):
         self.tabs.setStyleSheet("QTabBar::close-button {width:0;height:0;image:none;}")
         self.tabs.tabCloseRequested.connect(self.close_tab_with_checks)
         self.tabs.currentChanged.connect(self._on_tab_changed_internal)
-        self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", True))
+        self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", False))
         body.addWidget(self.tabs, 1)
 
         body_widget = QWidget()
@@ -3599,6 +3731,9 @@ class Browser(QMainWindow):
         self.update_url_bar()
         if hasattr(self, 'vtab_bar'):
             self.vtab_bar.set_current(index)
+        tab = self.tabs.widget(index)
+        if tab:
+            self.tab_last_accessed[id(tab)] = datetime.now()
 
     def _on_vtab_selected(self, index):
         self.tabs.setCurrentIndex(index)
@@ -3708,7 +3843,7 @@ class Browser(QMainWindow):
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
 
-            if hasattr(tab, 'browser') and tab.browser:
+            if hasattr(tab, 'web_view') and tab.web_view:
                 tab_id = id(tab)
                 last_access = self.tab_last_accessed.get(tab_id)
 
@@ -3870,8 +4005,8 @@ class Browser(QMainWindow):
                         'type': 'newtab',
                         'title': self.translator.tr("new_tab", "New Tab")
                     })
-                elif hasattr(tab, 'browser') and tab.browser:
-                    url = tab.browser.url().toString()
+                elif hasattr(tab, 'browser') and tab.web_view:
+                    url = tab.web_view.url().toString()
                     title = self.tabs.tabText(i)
                     session_data['tabs'].append({
                         'type': 'web',
@@ -4039,6 +4174,9 @@ class Browser(QMainWindow):
             "restore_session": True,
             "sound_enabled": True,
             "vertical_tabs": False,
+            "crash_handler_enabled": True,
+            "crash_dialog_enabled": False,
+            "extensions_enabled": True,
         }
         if os.path.exists(SETTINGS_FILE):
             try:
@@ -4339,8 +4477,8 @@ class Browser(QMainWindow):
         if focused:
             self.nav_toolbar.show()
             if hasattr(self, 'vtab_bar'):
-                self.vtab_bar.setVisible(self.settings.get("vertical_tabs", True))
-            self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", True))
+                self.vtab_bar.setVisible(self.settings.get("vertical_tabs", False))
+            self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", False))
             self.focus_btn.setText("⊡")
             self.focus_btn.setToolTip("Focus mode")
             self._tab_focused = False
@@ -4351,7 +4489,7 @@ class Browser(QMainWindow):
                 self.vtab_bar.hide()
             self.tabs.tabBar().hide()
             self.focus_btn.setText("⊟")
-            self.focus_btn.setToolTip("Exit focus mode")
+            self.focus_btn.setToolTip("exit focus mode")
             self._tab_focused = True
 
     def _show_hover_bar(self):
@@ -4386,6 +4524,8 @@ class Browser(QMainWindow):
 
     def closeEvent(self, event):
         print(f"cat browser closing (plz use it again)")
+        if hasattr(self, 'sound_manager'):
+            self.sound_manager.cleanup_all()
         self.save_passwords()
         self.save_history()
         self.save_search_engine()
@@ -4393,12 +4533,11 @@ class Browser(QMainWindow):
 
         if self.settings.get("restore_session", True):
             self.save_session()
-
-        if os.path.exists(TAB_STATE_FILE):
-            try:
-                os.remove(TAB_STATE_FILE)
-            except:
-                pass
+            if os.path.exists(TAB_STATE_FILE):
+                try:
+                    os.remove(TAB_STATE_FILE)
+                except:
+                    pass
 
         if self.rpc:
             try:
@@ -4419,62 +4558,127 @@ class Browser(QMainWindow):
         except:
             return url
 
+def global_exception_handler(exc_type, exc_value, exc_traceback):
+    import traceback
+    
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    
+    error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    print("=" * 80)
+    print("UNHANDLED EXCEPTION CAUGHT BY CRASH HANDLER")
+    print("=" * 80)
+    print(error_msg)
+    print("=" * 80)
+    
+    try:
+        app = QApplication.instance()
+        if app is None:
+            app = QApplication(sys.argv)
+
+        crash_handler_enabled = True
+        crash_dialog_enabled = True
+
+        for widget in app.topLevelWidgets():  # ADD THIS - you're missing the loop!
+            try:
+                if isinstance(widget, Browser):
+                    crash_handler_enabled = widget.settings.get("crash_handler_enabled", True)
+                    crash_dialog_enabled = widget.settings.get("crash_dialog_enabled", True)
+                    break
+            except:
+                pass
+
+        if not crash_handler_enabled:
+            print("crash handler disabled - using default exception handling")
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        if crash_dialog_enabled:
+            dialog = CrashDialog(error_msg)
+            dialog.exec()
+        else:
+            print("crash dialog off, the logs will only be visible in the console")
+
+    except Exception as e:
+        print("failed to show crash dialog which isnt very good")
+        print(f"dialog error: {e}")
+        traceback.print_exception(exc_type, exc_value, exc_traceback)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    main_window = Browser()
+    sys.excepthook = global_exception_handler
+    
+    try:
+        app = QApplication(sys.argv)
+        main_window = Browser()
 
-    startup_url = None
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
-        if arg.startswith("http://") or arg.startswith("https://"):
-            startup_url = arg
-        else:
-            startup_url = "https://" + arg
+        startup_url = None
+        if len(sys.argv) > 1:
+            arg = sys.argv[1]
+            if arg.startswith("http://") or arg.startswith("https://"):
+                startup_url = arg
+            else:
+                startup_url = "https://" + arg
 
-    startup_url_opened = False
+        startup_url_opened = False
 
-    def open_startup_url():
-        global startup_url_opened
-        if startup_url and not startup_url_opened:
-            startup_url_opened = True
-            main_window.add_tab(startup_url)
+        def open_startup_url():
+            global startup_url_opened
+            if startup_url and not startup_url_opened:
+                startup_url_opened = True
+                main_window.add_tab(startup_url)
 
-    if not os.path.exists(SETUP_FILE):
-        splash = WelcomeScreen(3000)
-        splash.show()
-
-        class SetupController:
-            def __init__(self):
-                self.setup_shown = False
-                self.timer = QTimer()
-                self.timer.setSingleShot(True)
-                self.timer.timeout.connect(self.show_setup)
-
-            def show_setup(self):
-                if not self.setup_shown:
-                    self.setup_shown = True
-                    setup_wizard = SetupWizard(main_window)
-                    setup_wizard.finished.connect(main_window.show)
-                    setup_wizard.finished.connect(open_startup_url)
-                    setup_wizard.exec()
-
-            def start_timer(self):
-                self.timer.start(3500)
-
-        controller = SetupController()
-        splash.finished.connect(controller.show_setup)
-        controller.start_timer()
-
-    else:
-        if main_window.settings.get("show_welcome_screen", True):
+        if not os.path.exists(SETUP_FILE):
             splash = WelcomeScreen(3000)
             splash.show()
-            splash.finished.connect(main_window.show)
-            splash.finished.connect(open_startup_url)
-            QTimer.singleShot(3500, main_window.show)
-        else:
-            main_window.show()
-            open_startup_url()
 
-    sys.exit(app.exec())
+            class SetupController:
+                def __init__(self):
+                    self.setup_shown = False
+                    self.timer = QTimer()
+                    self.timer.setSingleShot(True)
+                    self.timer.timeout.connect(self.show_setup)
+
+                def show_setup(self):
+                    if not self.setup_shown:
+                        self.setup_shown = True
+                        setup_wizard = SetupWizard(main_window)
+                        setup_wizard.finished.connect(main_window.show)
+                        setup_wizard.finished.connect(open_startup_url)
+                        setup_wizard.exec()
+
+                def start_timer(self):
+                    self.timer.start(3500)
+
+            controller = SetupController()
+            splash.finished.connect(controller.show_setup)
+            controller.start_timer()
+
+        else:
+            if main_window.settings.get("show_welcome_screen", True):
+                splash = WelcomeScreen(3000)
+                splash.show()
+                splash.finished.connect(main_window.show)
+                splash.finished.connect(open_startup_url)
+                QTimer.singleShot(3500, main_window.show)
+            else:
+                main_window.show()
+                open_startup_url()
+
+        sys.exit(app.exec())
+    
+    except Exception as e:
+        import traceback
+        error_msg = traceback.format_exc()
+        print("CRITICAL ERROR DURING STARTUP")
+        print(error_msg)
+        
+        try:
+            app = QApplication.instance()
+            if app is None:
+                app = QApplication(sys.argv)
+            dialog = CrashDialog(error_msg)
+            dialog.exec()
+        except:
+            print("dawg how can you even break the browser this bad")        
+        sys.exit(1)
