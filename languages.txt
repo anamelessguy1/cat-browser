@@ -84,6 +84,11 @@ interrupted=Interrupted
 clear_history_msg=goooonerr wants to clear his history
 restore_default_settings_msg=are you sure you wanna reset your settings?
 clear_all_data_msg=are you sure you wanna clear all data including themes and extensions and cookies?
+crash_handler_desc=a crash handler prevents sudden crashes making the browser more stable 
+crash_dialog_desc=turning this off will remove pop ups for the crashes, it won't make any changes when the crash handler is turned off
+enable_crash_handler=Enable crash handler
+show_crash_dialog=Show crash dialog
+crash_handler_settings=Crash handler settings
 
 [Français]
 welcome_title=cat browser (réel)
@@ -170,6 +175,11 @@ interrupted=Interrompu
 clear_history_msg=le gooner veut effacer son historique
 restore_default_settings_msg=tu es sûr de vouloir réinitialiser tes paramètres ?
 clear_all_data_msg=tu es sûr de vouloir effacer toutes les données y compris les thèmes, les extensions et les cookies ?
+crash_handler_desc=un gestionnaire de crash empêche les plantages soudains, ce qui rend le navigateur plus stable
+crash_dialog_desc=désactiver ceci supprimera les fenêtres pop-up lors des plantages, cela ne changera rien si le gestionnaire de crash est désactivé
+enable_crash_handler=activer le gestionnaire de crash
+show_crash_dialog=afficher la boîte de dialogue de crash
+crash_handler_settings=paramètres du gestionnaire de crash
 
 [arabic]
 welcome_title=متصفح القط (حقيقي)
@@ -256,6 +266,11 @@ interrupted=متوقف
 clear_history_msg=الغونر يريد مسح سجله
 restore_default_settings_msg=هل أنت متأكد أنك تريد إعادة تعيين إعداداتك؟
 clear_all_data_msg=هل أنت متأكد أنك تريد مسح جميع البيانات بما في ذلك الثيمات والإضافات والكوكيز؟
+crash_handler_desc=معالج الأعطال يمنع الانهيارات المفاجئة مما يجعل المتصفح أكثر استقرارًا
+crash_dialog_desc=إيقاف هذا سيزيل النوافذ المنبثقة عند حدوث الأعطال، ولن يغيّر شيئًا إذا كان معالج الأعطال معطّلًا
+enable_crash_handler=تفعيل معالج الأعطال
+show_crash_dialog=إظهار نافذة الأعطال
+crash_handler_settings=إعدادات معالج الأعطال
 
 [Русский]
 welcome_title=котобраузер (реально)
@@ -341,6 +356,11 @@ interrupted=прервано
 clear_history_msg=вы уверены что хотите очистить историю?
 restore_default_settings_msg=вы уверены что хотите сбросить настройки?
 clear_all_data_msg=вы уверены что хотите очистить все данные включая темы, расширения и файлы cookie?
+crash_handler_desc=обработчик сбоев предотвращает внезапные сбои делая браузер более стабильным
+crash_dialog_desc=отключение этой функции уберёт всплывающие окна о сбоях, если обработчик сбоев отключён это ни на что не повлияет
+enable_crash_handler=включить обработчик сбоев
+show_crash_dialog=показывать окно при сбое
+crash_handler_settings=настройки обработчика сбоев
 
 [DeutschDE]
 welcome_title=Katzen browser (echt)
@@ -426,6 +446,11 @@ interrupted=Unterbrochen
 clear_history_msg=der Gooner will seinen Verlauf löschen
 restore_default_settings_msg=bist du sicher dass du deine Einstellungen zurücksetzen willst?
 clear_all_data_msg=bist du sicher dass du alle Daten löschen willst einschließlich Themes Erweiterungen und Cookies?
+crash_handler_desc=ein absturz-handler verhindert plötzliche abstürze und macht den browser stabiler
+crash_dialog_desc=wenn du das deaktivierst, werden die pop-ups bei abstürzen entfernt. es ändert nichts, wenn der absturz-handler ausgeschaltet ist
+enable_crash_handler=absturz-handler aktivieren
+show_crash_dialog=absturz-dialog anzeigen
+crash_handler_settings=absturz-handler einstellungen
 
 [Română]
 welcome_title=browser de pisici (real)
@@ -512,6 +537,11 @@ interrupted=Întrerupt
 clear_history_msg=gooner-ul vrea să își șteargă istoricul
 restore_default_settings_msg=ești sigur că vrei să resetezi setările tale?
 clear_all_data_msg=ești sigur că vrei să ștergi toate datele inclusiv temele, extensiile și cookie-urile?
+crash_handler_desc=un gestionator de crash-uri previne blocările bruște, făcând browserul mai stabil
+crash_dialog_desc=dezactivarea acestei opțiuni va elimina ferestrele pop-up pentru crash-uri, nu va face nicio schimbare dacă gestionatorul de crash-uri este dezactivat
+enable_crash_handler=activează gestionatorul de crash-uri
+show_crash_dialog=arată dialogul de crash
+crash_handler_settings=setări gestionator de crash-uri
 
 [Polski]
 welcome_title=kocia przeglądarka (prawdziwa)
@@ -598,6 +628,11 @@ interrupted=Przerwane
 clear_history_msg=goooonerr chce wyczyścić swoją historię 
 restore_default_settings_msg=jesteś pewny/a że chcesz przywrócić swoje ustawienia?
 clear_all_data_msg=are Jesteś pewny/a że chcesz wyczyść swoje dane w tym motywy wtyczki i dane cookies?
+crash_handler_settings=ustawienia obsługi awarii
+enable_crash_handler=włącz obsługę awarii
+show_crash_dialog=pokaż dialog awarii
+crash_handler_desc=opis okna dialogowego awarii
+crash_dialog_desc=opis programu obsługi awarii
 
 [Brazilian Portuguese]
 welcome_title=Cat Browser
@@ -684,3 +719,8 @@ interrupted=Interrompido
 clear_history_msg=o gooner quer limpar o histórico dele
 restore_default_settings_msg=tem certeza que quer redefinir suas configurações?
 clear_all_data_msg=tem certeza que quer limpar todos os dados incluindo temas, extensões e cookies?
+crash_handler_desc=um manipulador de falhas evita travamentos repentinos, tornando o navegador mais estável
+crash_dialog_desc=desativar isto removerá os pop-ups de travamento, não fará nenhuma mudança se o manipulador de falhas estiver desativado
+enable_crash_handler=ativar manipulador de falhas
+show_crash_dialog=mostrar diálogo de falha
+crash_handler_settings=configurações do manipulador de falhas
