@@ -12,12 +12,11 @@ so please tell your friends that like cats to download this!!!!!!
 - custom extension format
 - themes!
 - settings menu!!!
+- a download manager!!
 - you can browser the internet!!!!
-- ability to change search engine (google/bing/duckduckgo/yahoo)
+- ability to change search engine (google/bing/duckduckgo/yahoo) and more
 - a custom new tab page that shows interesting facts with a search bar
 ## discord server
-
-you can download extensions and themes in cat browser community
 
 https://discord.gg/GrZa3BmDpW
 
@@ -27,11 +26,11 @@ windows = available
 
 linux = available
 
-android = available but cancelled
+android = available, but in a seperate repo https://github.com/anamelessguy1/cat-browser-android
 
-ios = never, its not open source
+ios = never
 
-macos = available
+macos = available but cancelled
 
 stuff the browser uses: python/PyQt6/PyQt6-WebEngine/PyPresence/Psutil
 # how to launch source code
@@ -63,7 +62,7 @@ then the browser launches
 
 ## macos: tutorial coming soon
 
-## screenshots
+## screenshots (These are old screenshots and im too lazy to update them)
 
 ### welcome screen
 
@@ -88,6 +87,7 @@ then the browser launches
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
 </h1>
+
 
 
 
