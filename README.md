@@ -2,13 +2,9 @@
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/soggycat.png" width="40" height="40"> cat browser
 </h1>
 
-
-cat browser is a browser (no shit sherlock) for people that love cats. 
-
-so please tell your friends that like cats to download this!!!!!!
-
 # what is it?
-- well it's a for people that love cats
+- cat browser is a browser (no shit sherlock) for people that love cats. 
+so please tell your friends that like cats to download this!!!!!!
 - it's lightweight (less ram usage) so you can use it on weak pcs
 
 ## what it has to offer in the latest release
@@ -93,6 +89,7 @@ then the browser launches
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
 </h1>
+
 
 
 
