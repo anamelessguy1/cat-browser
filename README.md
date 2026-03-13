@@ -68,7 +68,7 @@ then the browser launches
 
 ## macos: tutorial coming soon
 
-## screenshots (These are old screenshots and im too lazy to update them)
+## screenshots
 
 ### welcome screen
 
@@ -93,6 +93,7 @@ then the browser launches
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/whatwhowhowhat0-hub/cat-browser/refs/heads/main/examplewebsite.png" width="1280" height="720">
 </h1>
+
 
 
 
