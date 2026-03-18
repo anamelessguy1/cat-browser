@@ -36,39 +36,45 @@ try:
 except ImportError:
     DISCORD_RPC_AVAILABLE = False
 
+
+
 if getattr(sys, 'frozen', False):
     BASE_PATH = os.path.dirname(os.path.abspath(sys.executable))
 else:
     BASE_PATH = os.path.dirname(__file__)
 
-WELCOME_IMG = os.path.join(BASE_PATH, "welcome.png")
-FONT_FILE = os.path.join(BASE_PATH, "vrc.ttf")
-BG_IMG = os.path.join(BASE_PATH, "bg.png")
-BG2_IMG = os.path.join(BASE_PATH, "bg2.png")
-FACTS_FILE = os.path.join(BASE_PATH, "facts.txt")
+WELCOME_IMG    = os.path.join(BASE_PATH, "welcome.png")
+FONT_FILE      = os.path.join(BASE_PATH, "vrc.ttf")
+BG_IMG         = os.path.join(BASE_PATH, "bg.png")
+BG2_IMG        = os.path.join(BASE_PATH, "bg2.png")
+FACTS_FILE     = os.path.join(BASE_PATH, "facts.txt")
 LANGUAGES_FILE = os.path.join(BASE_PATH, "languages.txt")
+SPLASH_VIDEO   = os.path.join(BASE_PATH, "splash.mp4")
 
-DATA_DIR = os.path.join(os.path.expanduser("~"), ".cat_browser")
-SPLASH_VIDEO = os.path.join(BASE_PATH, "splash.mp4")
+
+
+DATA_DIR       = os.path.join(os.path.expanduser("~"), ".cat_browser")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 EXTENSIONS_DIR = os.path.join(DATA_DIR, "extensions")
 os.makedirs(EXTENSIONS_DIR, exist_ok=True)
 
-FAVICON_DIR = os.path.join(DATA_DIR, "favicons")
+FAVICON_DIR    = os.path.join(DATA_DIR, "favicons")
 os.makedirs(FAVICON_DIR, exist_ok=True)
 
-THEMES_DIR = os.path.join(DATA_DIR, "themes")
+THEMES_DIR     = os.path.join(DATA_DIR, "themes")
 os.makedirs(THEMES_DIR, exist_ok=True)
 
-HISTORY_FILE = os.path.join(DATA_DIR, "history.json")
-PASSWORDS_FILE = os.path.join(DATA_DIR, "passwords.csv")
+
+
+HISTORY_FILE       = os.path.join(DATA_DIR, "history.json")
+PASSWORDS_FILE     = os.path.join(DATA_DIR, "passwords.csv")
 SEARCH_ENGINE_FILE = os.path.join(DATA_DIR, "search_engine.json")
-SHORTCUTS_FILE = os.path.join(DATA_DIR, "shortcuts.json")
-SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
-SETUP_FILE = os.path.join(DATA_DIR, "setup_completed.json")
-SESSION_FILE = os.path.join(DATA_DIR, "session.json")
-TAB_STATE_FILE = os.path.join(DATA_DIR, "tab_states.json")
+BOOKMARKS_FILE     = os.path.join(DATA_DIR, "bookmarks.json")
+SETTINGS_FILE      = os.path.join(DATA_DIR, "settings.json")
+SETUP_FILE         = os.path.join(DATA_DIR, "setup_completed.json")
+SESSION_FILE       = os.path.join(DATA_DIR, "session.json")
+TAB_STATE_FILE     = os.path.join(DATA_DIR, "tab_states.json")
 
 DISCORD_APP_ID = "1439639890848383149"
 
@@ -693,34 +699,51 @@ class ThemeEngine:
 
         default_css = """
         QMainWindow {
-            background: #2b2b2b;
+            background: #1b1b1b;
             color: white;
             border: none;
         }
+        QTabBar::tab {
+            background: #2c2c2c;
+            color: #ccc;
+            padding: 8px 20px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            margin-right: 1px;
+            font-size: 12px;
+        }
+        QTabBar::tab:selected {
+            background: #1f1f1f;
+            color: white;
+            border-bottom: 2px solid #0078d4;
+        }
+        QTabBar::tab:hover:!selected {
+            background: #3a3a3a;
+        }
         QToolBar {
-            background: #2b2b2b;
+            background: #1b1b1b;
             border: none;
             border-bottom: 1px solid #3c3c3c;
             spacing: 6px;
             padding: 8px;
         }
         QPushButton {
-            background: #3c3c3c;
+            background: #2c2c2c;
             border: 1px solid #4a4a4a;
             color: white;
             padding: 2px 4px;
-            border-radius:  10px;
+            border-radius:  14px;
             font-size: 14px;
             font-weight: bold;
         }
         QPushButton:hover {
-            background: #4a5a6a;
+            background: #6c6c6c;
         }
         QPushButton:pressed {
-            background: #5a6a7a;
+            background: #5c5c5c;
         }
         QLineEdit {
-            background: #3c3c3c;
+            background: #2c2c2c;
             border: 1px solid #4a4a4a;
             color: white;
             padding: 8px 16px;
@@ -736,28 +759,12 @@ class ThemeEngine:
         }
         QTabWidget::pane {
             border: none;
-            background: #1e1e1e;
+            background: #2e2e2e;
         }
         QTabWidget::tab-bar {
             alignment: left;
         }
-        QTabBar::tab {
-            background: #3c3c3c;
-            color: #ccc;
-            padding: 8px 20px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-            margin-right: 1px;
-            font-size: 12px;
-        }
-        QTabBar::tab:selected {
-            background: #1e1e1e;
-            color: white;
-            border-bottom: 2px solid #0078d4;
-        }
-        QTabBar::tab:hover:!selected {
-            background: #4a4a4a;
-        }
+
         QComboBox, QCheckBox, QGroupBox, QTextEdit, QScrollArea, QLabel {
             color: white;
         }
@@ -1054,40 +1061,6 @@ class CustomNewTabPage(QWidget):
         """)
         overlay_layout.addWidget(self.search_bar, 0, Qt.AlignmentFlag.AlignCenter)
 
-        shortcuts_label = QLabel(self.translator.tr("shortcuts","Shortcuts"))
-        shortcuts_label.setStyleSheet("color:white; font-size:18px; font-weight:bold; margin-bottom:20px;")
-        shortcuts_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        overlay_layout.addWidget(shortcuts_label)
-
-        self.shortcuts_container = QWidget()
-        self.shortcuts_container.setStyleSheet("background: transparent;")
-        self.shortcuts_layout = QGridLayout(self.shortcuts_container)
-        self.shortcuts_layout.setSpacing(15)
-        self.shortcuts_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.shortcuts_layout.setContentsMargins(20,10,20,10)
-
-        self.add_shortcut_btn = QPushButton("+")
-        self.add_shortcut_btn.setFixedSize(80,90)
-        self.add_shortcut_btn.setStyleSheet("""
-            QPushButton {
-                background: rgba(60,60,60,0.8);
-                border: 2px dashed #777;
-                border-radius: 12px;
-                color: #777;
-                font-size:24px;
-                font-weight:bold;
-            }
-            QPushButton:hover {
-                background: rgba(80,80,80,0.9);
-                border: 2px dashed #0078d4;
-                color: #0078d4;
-            }
-        """)
-        self.add_shortcut_btn.clicked.connect(self.add_shortcut)
-        self.shortcuts_layout.addWidget(self.add_shortcut_btn, 0, 0)
-
-        overlay_layout.addWidget(self.shortcuts_container)
-
         self.quote_label = QLabel()
         self.quote_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.quote_label.setStyleSheet("color:#ccc; font-size:14px; font-style:italic; margin-top:30px;")
@@ -1119,8 +1092,6 @@ class CustomNewTabPage(QWidget):
         bottom_layout.addWidget(self.credits_btn)
         overlay_layout.addWidget(bottom_container)
 
-        self.shortcuts = self.load_shortcuts()
-        self.display_shortcuts()
         self.load_fun_fact()
 
         self.search_bar.returnPressed.connect(self.perform_search)
@@ -1224,92 +1195,6 @@ class CustomNewTabPage(QWidget):
                     self.quote_label.setText(self.translator.tr("fun_fact", "{}").format(fact_text))
                     return
         self.quote_label.setText(self.translator.tr("fun_fact", "fun fact:").format(""))
-
-    def load_shortcuts(self):
-        shortcuts = []
-        if os.path.exists(SHORTCUTS_FILE):
-            try:
-                with open(SHORTCUTS_FILE, "r", encoding="utf-8") as f:
-                    shortcuts = json.load(f)
-            except:
-                pass
-        return shortcuts
-
-    def save_shortcuts(self):
-        try:
-            with open(SHORTCUTS_FILE, "w", encoding="utf-8") as f:
-                json.dump(self.shortcuts, f, indent=2)
-        except:
-            pass
-
-    def display_shortcuts(self):
-        for i in reversed(range(self.shortcuts_layout.count())):
-            widget = self.shortcuts_layout.itemAt(i).widget()
-            if widget != self.add_shortcut_btn:
-                widget.deleteLater()
-
-        row, col = 0, 0
-        max_cols = 8
-
-        for shortcut in self.shortcuts:
-            container = QWidget()
-            container.setFixedSize(80, 90)
-            container_layout = QStackedLayout(container)
-            shortcut_widget = ShortcutWidget(
-                shortcut['name'], shortcut['url'], self.parent_browser
-            )
-            container_layout.addWidget(shortcut_widget)
-
-            remove_btn = QPushButton("x", container)
-            remove_btn.setFixedSize(16, 16)
-            remove_btn.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    color: white;
-                    border-radius: 3px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background: transparent;
-                }
-            """)
-            remove_btn.move(container.width() - 20, 2)
-            remove_btn.raise_()
-            remove_btn.clicked.connect(lambda checked, url=shortcut['url']: self.remove_shortcut(url))
-
-            self.shortcuts_layout.addWidget(container, row, col)
-
-            col += 1
-            if col >= max_cols:
-                col = 0
-                row += 1
-
-        self.shortcuts_layout.removeWidget(self.add_shortcut_btn)
-        if len(self.shortcuts) < 24:
-            self.shortcuts_layout.addWidget(self.add_shortcut_btn, row, col)
-            self.add_shortcut_btn.setEnabled(len(self.shortcuts) < 24)
-        else:
-            self.add_shortcut_btn.setEnabled(False)
-
-    def add_shortcut(self):
-        if len(self.shortcuts) >= 24:
-            return
-        dialog = AddShortcutDialog(self, self.translator)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            shortcut_data = dialog.get_shortcut_data()
-            if shortcut_data['name'] and shortcut_data['url']:
-                url = shortcut_data['url']
-                if not url.startswith(('http://','https://')):
-                    url = 'https://' + url
-                self.shortcuts.append({'name': shortcut_data['name'], 'url': url})
-                self.save_shortcuts()
-                self.display_shortcuts()
-                self.download_favicon(url)
-
-    def remove_shortcut(self, url):
-        self.shortcuts = [s for s in self.shortcuts if s['url'] != url]
-        self.save_shortcuts()
-        self.display_shortcuts()
 
     def perform_search(self):
         q = self.search_bar.text().strip()
@@ -1452,15 +1337,272 @@ class InspectorWebPage(QWebEnginePage):
     def javaScriptConsoleMessage(self, level, message, lineNumber, sourceID):
         print(f"js console: {message} (line {lineNumber})")
 
+    def acceptNavigationRequest(self, url, nav_type, is_main_frame):
+        if url.scheme() == "cat-browser":
+            if self.parent_browser:
+                from PyQt6.QtCore import QTimer
+                url_str = url.toString()
+                QTimer.singleShot(0, lambda: self.parent_browser._open_cat_browser_page(url_str))
+            return False
+        return super().acceptNavigationRequest(url, nav_type, is_main_frame)
+
     def createWindow(self, type):
         if type == QWebEnginePage.WebWindowType.WebBrowserTab:
             if self.parent_browser:
                 new_tab = self.parent_browser.add_tab("about:blank")
                 if hasattr(new_tab, 'web_view') and new_tab.web_view:
-                    return new_tab.web_view.page()  
+                    return new_tab.web_view.page()
             new_view = InspectorWebView(self.profile())
-            return new_view.page() 
+            return new_view.page()
         return super().createWindow(type)
+
+def build_offline_game_html(soggy_path: str) -> str:
+    soggy_url = QUrl.fromLocalFile(soggy_path).toString()
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>No Internet</title>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{
+    background: #5c94fc;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    image-rendering: pixelated;
+  }}
+  canvas {{
+    display: block;
+    cursor: pointer;
+    image-rendering: pixelated;
+    position: absolute;
+    top: 0; left: 0;
+  }}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let W, H, S;
+let PIPE_W, PIPE_GAP, PIPE_SPEED, PIPE_SPAWN, GROUND_H, CAT_X, CAT_W, CAT_H, BLOCK;
+let GRAVITY, FLAP_VEL;
+
+function resize() {{
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width  = W;
+  canvas.height = H;
+  ctx.imageSmoothingEnabled = false;
+
+  S = Math.min(W, H) / 320;
+
+  BLOCK      = Math.round(6 * S);
+  PIPE_W     = Math.round(40 * S);
+  PIPE_GAP   = Math.round(120 * S);
+  PIPE_SPEED = 3.5 * S;
+  PIPE_SPAWN = Math.round(160 * S);
+  GROUND_H   = Math.round(52 * S);
+  CAT_X      = Math.round(60 * S);
+  CAT_W      = Math.round(34 * S);
+  CAT_H      = Math.round(34 * S);
+  GRAVITY    = 0.38 * S;
+  FLAP_VEL   = -5 * S;
+
+  if (state === 'idle') reset();
+}}
+
+const img = new Image();
+img.src = "{soggy_url}";
+
+const CLOUD_SHAPE = [
+  [1,1],[2,1],[3,1],
+  [0,2],[1,2],[2,2],[3,2],[4,2],
+  [0,3],[1,3],[2,3],[3,3],[4,3],
+];
+
+let state = 'idle';
+let catY, catVY, pipes, frame, bgOffset, clouds;
+
+function makeCloud(x) {{
+  return {{ x, y: Math.floor(20 * S + Math.random() * 80 * S) }};
+}}
+
+function reset() {{
+  catY     = H / 2 - CAT_H / 2;
+  catVY    = 0;
+  pipes    = [];
+  frame    = 0;
+  bgOffset = 0;
+  pipes.push(makePipe(W + Math.round(40 * S)));
+  clouds = [
+    makeCloud(Math.round(40 * S)),
+    makeCloud(Math.round(160 * S)),
+    makeCloud(Math.round(280 * S)),
+  ];
+}}
+
+function makePipe(x) {{
+  const minTop = Math.round(40 * S);
+  const maxTop = H - GROUND_H - PIPE_GAP - Math.round(40 * S);
+  const topH   = Math.floor(Math.random() * (maxTop - minTop) + minTop);
+  return {{ x, topH }};
+}}
+
+function flap() {{
+  if (state === 'dead') {{ state = 'idle'; reset(); return; }}
+  if (state === 'idle') {{ state = 'running'; reset(); }}
+  catVY = FLAP_VEL;
+}}
+
+document.addEventListener('keydown', e => {{
+  if (e.code === 'Space' || e.code === 'ArrowUp') {{ e.preventDefault(); flap(); }}
+}});
+canvas.addEventListener('click', flap);
+canvas.addEventListener('touchstart', e => {{ e.preventDefault(); flap(); }});
+window.addEventListener('resize', resize);
+
+function drawSky() {{
+  ctx.fillStyle = '#5c94fc';
+  ctx.fillRect(0, 0, W, H - GROUND_H);
+}}
+
+function drawCloud(cx, cy) {{
+  ctx.fillStyle = '#ffffff';
+  CLOUD_SHAPE.forEach(([col, row]) => {{
+    ctx.fillRect(cx + col * BLOCK, cy + row * BLOCK, BLOCK, BLOCK);
+  }});
+}}
+
+function drawClouds() {{
+  clouds.forEach(c => {{
+    drawCloud(c.x, c.y);
+    if (state === 'running') c.x -= 0.5 * S;
+    if (c.x < -5 * BLOCK) c.x = W + 10;
+  }});
+}}
+
+function drawGround() {{
+  ctx.fillStyle = '#c84b0c';
+  ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+  ctx.fillStyle = '#5da30e';
+  ctx.fillRect(0, H - GROUND_H, W, Math.round(8 * S));
+  ctx.fillStyle = '#4a8a0a';
+  ctx.fillRect(0, H - GROUND_H + Math.round(8 * S), W, Math.round(4 * S));
+  ctx.fillStyle = '#b04008';
+  const tile = Math.round(16 * S);
+  const off  = Math.floor(bgOffset * 0.6) % tile;
+  for (let x = -off; x < W; x += tile) {{
+    ctx.fillRect(x, H - GROUND_H + Math.round(18 * S), Math.round(8 * S), Math.round(4 * S));
+    ctx.fillRect(x + Math.round(8 * S), H - GROUND_H + Math.round(30 * S), Math.round(8 * S), Math.round(4 * S));
+  }}
+}}
+
+function drawPipe(p) {{
+  const botY = p.topH + PIPE_GAP;
+  const cap  = Math.round(14 * S);
+  const edge = Math.round(6 * S);
+  const ovr  = Math.round(4 * S);
+
+  ctx.fillStyle = '#5aab17';
+  ctx.fillRect(p.x, 0, PIPE_W, p.topH);
+  ctx.fillStyle = '#4a9010';
+  ctx.fillRect(p.x - ovr, p.topH - cap, PIPE_W + ovr * 2, cap);
+  ctx.fillStyle = '#2d6008';
+  ctx.fillRect(p.x, 0, edge, p.topH);
+  ctx.fillRect(p.x - ovr, p.topH - cap, edge, cap);
+
+  ctx.fillStyle = '#5aab17';
+  ctx.fillRect(p.x, botY, PIPE_W, H - botY - GROUND_H);
+  ctx.fillStyle = '#4a9010';
+  ctx.fillRect(p.x - ovr, botY, PIPE_W + ovr * 2, cap);
+  ctx.fillStyle = '#2d6008';
+  ctx.fillRect(p.x, botY + cap, edge, H - botY - GROUND_H - cap);
+  ctx.fillRect(p.x - ovr, botY, edge, cap);
+}}
+
+function drawCat() {{
+  if (img.complete && img.naturalWidth > 0) {{
+    ctx.drawImage(img, CAT_X, catY, CAT_W, CAT_H);
+  }} else {{
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(CAT_X, catY, CAT_W, CAT_H);
+  }}
+}}
+
+function drawHUD() {{
+  ctx.textAlign = 'center';
+  ctx.imageSmoothingEnabled = false;
+  const fs = Math.round(13 * S);
+
+  if (state === 'idle') {{
+    const bw = Math.round(180 * S), bh = Math.round(48 * S);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(W/2 - bw/2, H/2 - bh/2, bw, bh);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = Math.round(2 * S);
+    ctx.strokeRect(W/2 - bw/2, H/2 - bh/2, bw, bh);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + fs + 'px monospace';
+    ctx.fillText('CLICK TO START', W / 2, H / 2 + fs * 0.4);
+  }}
+
+  if (state === 'dead') {{
+    const bw = Math.round(200 * S), bh = Math.round(64 * S);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(W/2 - bw/2, H/2 - bh/2, bw, bh);
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = Math.round(2 * S);
+    ctx.strokeRect(W/2 - bw/2, H/2 - bh/2, bw, bh);
+    ctx.fillStyle = '#e74c3c';
+    ctx.font = 'bold ' + Math.round(15 * S) + 'px monospace';
+    ctx.fillText('GAME OVER', W / 2, H / 2 - fs * 0.4);
+    ctx.fillStyle = '#aaaaaa';
+    ctx.font = Math.round(11 * S) + 'px monospace';
+    ctx.fillText('CLICK TO RETRY', W / 2, H / 2 + fs * 1.2);
+  }}
+
+  if (state === 'running') {{
+  }}
+}}
+
+function update() {{
+  if (state !== 'running') return;
+  frame++; bgOffset += PIPE_SPEED;
+  catVY += GRAVITY; catY += catVY;
+  if (pipes.length === 0 || pipes[pipes.length - 1].x < W - PIPE_SPAWN)
+    pipes.push(makePipe(W + 10));
+  for (const p of pipes) {{
+    p.x -= PIPE_SPEED;
+  }}
+  pipes = pipes.filter(p => p.x > -PIPE_W - 10);
+  if (catY + CAT_H >= H - GROUND_H || catY <= 0) {{ state = 'dead'; return; }}
+  const cx = CAT_X + Math.round(4 * S), cy = catY + Math.round(4 * S);
+  const cw = CAT_W - Math.round(8 * S), ch = CAT_H - Math.round(8 * S);
+  for (const p of pipes) {{
+    if (cx + cw > p.x + Math.round(4 * S) && cx < p.x + PIPE_W - Math.round(4 * S))
+      if (cy < p.topH || cy + ch > p.topH + PIPE_GAP) {{ state = 'dead'; return; }}
+  }}
+}}
+
+function loop() {{
+  drawSky();
+  drawClouds();
+  pipes.forEach(drawPipe);
+  drawGround();
+  drawCat();
+  drawHUD();
+  update();
+  requestAnimationFrame(loop);
+}}
+
+resize();
+loop();
+</script>
+</body></html>"""
+
 
 class InspectorWebView(QWebEngineView):
     def __init__(self, profile, parent=None, browser=None):
@@ -1470,7 +1612,56 @@ class InspectorWebView(QWebEngineView):
         self.inspector_page.set_parent_browser(browser)
         self.setPage(self.inspector_page)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self._last_requested_url = ""
+        self.loadStarted.connect(self._on_load_started)
+        self.loadFinished.connect(self._on_load_finished)
 
+    def _on_load_started(self):
+        self._last_requested_url = self.url().toString()
+
+    def _on_load_finished(self, ok):
+        if ok:
+            return
+        current_url = self.url().toString()
+        OFFLINE_ERRORS = (
+            "ERR_NAME_NOT_RESOLVED",
+            "ERR_INTERNET_DISCONNECTED",
+            "ERR_NETWORK_CHANGED",
+            "ERR_CONNECTION_REFUSED",
+            "ERR_CONNECTION_TIMED_OUT",
+            "ERR_CONNECTION_RESET",
+            "ERR_ADDRESS_UNREACHABLE",
+        )
+        self.page().runJavaScript(
+            "document.title + '|||' + (document.body ? document.body.innerText.substring(0, 300) : '')",
+            lambda result, url=current_url: self._check_error_page(result, url)
+        )
+
+    def _check_error_page(self, result, url):
+        if not result:
+            return
+        text = result.upper()
+        OFFLINE_TRIGGERS = [
+            "ERR_NAME_NOT_RESOLVED", "ERR_INTERNET_DISCONNECTED",
+            "ERR_NETWORK_CHANGED", "ERR_CONNECTION_REFUSED",
+            "ERR_CONNECTION_TIMED_OUT", "ERR_CONNECTION_RESET",
+            "ERR_ADDRESS_UNREACHABLE", "ERR_EMPTY_RESPONSE",
+            "NET::ERR", "DNS_PROBE", "CHROME-ERROR",
+        ]
+        if any(t in text for t in OFFLINE_TRIGGERS):
+            soggy_path = os.path.join(BASE_PATH, "soggy.png")
+            base_url = QUrl.fromLocalFile(BASE_PATH + os.sep)
+            self.setHtml(build_offline_game_html(soggy_path), base_url)
+            if self.parent_browser:
+                tab_index = -1
+                for i in range(self.parent_browser.tabs.count()):
+                    tab = self.parent_browser.tabs.widget(i)
+                    if hasattr(tab, 'web_view') and tab.web_view is self:
+                        tab_index = i
+                        break
+                if tab_index >= 0:
+                    self.parent_browser.tabs.setTabText(tab_index, "No Internet")
+                self.parent_browser.url_bar.setText(url)
 
     def contextMenuEvent(self, event):
         menu = self.createStandardContextMenu()
@@ -2248,172 +2439,6 @@ class Translator:
                 pass
         return text
 
-class AddShortcutDialog(QDialog):
-    def __init__(self, parent=None, translator=None):
-        super().__init__(parent)
-        self.translator = translator or Translator()
-        self.setWindowTitle(self.translator.tr("add_shortcut", "Add Shortcut"))
-        self.setFixedSize(400, 200)
-        self.setStyleSheet("""
-            QDialog { background: #2b2b2b; color: white; }
-            QLabel { color: white; font-size: 14px; }
-            QLineEdit {
-                background: #3c3c3c;
-                border: 1px solid #555;
-                color: white;
-                padding: 8px;
-                border-radius: 14px;
-                font-size: 14px;
-            }
-            QLineEdit:focus { border: 1px solid #0078d4; }
-            QPushButton {
-                background: #0078d4;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 14px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background: #106ebe; }
-            QPushButton:pressed { background: #005a9e; }
-            QPushButton:disabled {
-                background: #555;
-                color: #888;
-            }
-        """)
-
-        layout = QVBoxLayout(self)
-
-        name_layout = QVBoxLayout()
-        name_label = QLabel(self.translator.tr("shortcut_name", "Shortcut Name:"))
-        self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText(self.translator.tr("enter_name", "Enter shortcut name..."))
-        name_layout.addWidget(name_label)
-        name_layout.addWidget(self.name_input)
-        layout.addLayout(name_layout)
-
-        url_layout = QVBoxLayout()
-        url_label = QLabel(self.translator.tr("url", "URL:"))
-        self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText(self.translator.tr("enter_url", "https://example.com"))
-        url_layout.addWidget(url_label)
-        url_layout.addWidget(self.url_input)
-        layout.addLayout(url_layout)
-
-        button_layout = QHBoxLayout()
-        self.ok_button = QPushButton(self.translator.tr("add_shortcut", "Add Shortcut"))
-        self.cancel_button = QPushButton(self.translator.tr("cancel", "Cancel"))
-
-        self.ok_button.clicked.connect(self.accept)
-        self.cancel_button.clicked.connect(self.reject)
-
-        button_layout.addWidget(self.ok_button)
-        button_layout.addWidget(self.cancel_button)
-        layout.addLayout(button_layout)
-
-        self.name_input.textChanged.connect(self.validate_inputs)
-        self.url_input.textChanged.connect(self.validate_inputs)
-        self.validate_inputs()
-
-    def validate_inputs(self):
-        name = self.name_input.text().strip()
-        url = self.url_input.text().strip()
-        self.ok_button.setEnabled(bool(name) and bool(url))
-
-    def get_shortcut_data(self):
-        return {
-            'name': self.name_input.text().strip(),
-            'url': self.url_input.text().strip()
-        }
-
-class ShortcutWidget(QWidget):
-    def __init__(self, name, url, browser, parent=None):
-        super().__init__(parent)
-        self.name = name
-        self.url = url
-        self.browser = browser
-        self.setFixedSize(80, 90)
-        self.setStyleSheet("""
-            ShortcutWidget {
-                background: rgba(60, 60, 60, 150);
-                border: 1px solid #555;
-                border-radius: 8px;
-            }
-            ShortcutWidget:hover {
-                background: rgba(80, 80, 80, 150);
-                border: 1px solid #0078d4;
-            }
-        """)
-
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(5)
-        layout.setContentsMargins(5, 5, 5, 5)
-
-        self.icon_label = QLabel()
-        self.icon_label.setFixedSize(32, 32)
-        self.icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.icon_label.setStyleSheet("""
-            QLabel {
-                background: transparent;
-                border-radius: 14px;
-            }
-        """)
-
-        self.load_favicon()
-
-        self.name_label = QLabel(name)
-        self.name_label.setStyleSheet("color: white; font-size: 11px;")
-        self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.name_label.setWordWrap(True)
-        self.name_label.setMaximumWidth(70)
-
-        layout.addWidget(self.icon_label)
-        layout.addWidget(self.name_label)
-
-    def load_favicon(self):
-        domain = self.extract_domain(self.url)
-        if domain:
-            favicon_path = os.path.join(FAVICON_DIR, f"{domain}.png")
-            if os.path.exists(favicon_path):
-                pixmap = QPixmap(favicon_path)
-                if not pixmap.isNull():
-                    self.icon_label.setPixmap(pixmap.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-                    return
-
-        fallback_text = self.name[0].upper() if self.name else "?"
-        self.icon_label.setText(fallback_text)
-        self.icon_label.setStyleSheet("""
-            QLabel {
-                color: white;
-                font-size: 14px;
-                font-weight: bold;
-                background: #0078d4;
-                border-radius: 16px;
-                min-width: 32px;
-                max-width: 32px;
-                min-height: 32px;
-                max-height: 32px;
-            }
-        """)
-
-    def extract_domain(self, url):
-        try:
-            from urllib.parse import urlparse
-            parsed = urlparse(url)
-            if parsed.netloc:
-                return parsed.netloc.replace('www.', '')
-        except:
-            pass
-        return None
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self.url:
-                self.browser.add_tab(self.url)
-        super().mousePressEvent(event)
-
 class ModernTabBar(QTabBar):
     def __init__(self):
         super().__init__()
@@ -2549,7 +2574,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(title)
 
-        version_label = QLabel("version: 0.7.6")
+        version_label = QLabel("version: 0.9.1")
         version_label.setStyleSheet("""
             color: #b0b0b0;
             font-size: 12px;
@@ -2575,7 +2600,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(self.ram_label)
 
-        self.version = QLabel("0.7.6")
+        self.version = QLabel("0.9.1")
         self.version.setStyleSheet("""
             color: #e0e0e0;
             font-size: 16px;
@@ -2922,14 +2947,13 @@ class SettingsTab(QWidget):
         self.clear_history_btn = QPushButton(self.translator.tr("clear_history", "Clear History"))
         self.clear_history_btn.setStyleSheet(button_style)
         self.clear_history_btn.clicked.connect(self.clear_history)
-        history_layout.addWidget(self.clear_history_btn)
-        self.hist_text = QTextEdit()
-        self.hist_text.setReadOnly(True)
-        self.hist_text.setMaximumHeight(150)
-        self.hist_text.setStyleSheet(self.ext_text.styleSheet())
-        history_layout.addWidget(self.hist_text)
-        self.update_history_view()
         self.clear_history_btn.setFixedWidth(190)
+        history_layout.addWidget(self.clear_history_btn)
+        self.view_history_btn = QPushButton(self.translator.tr("view_history", "View History"))
+        self.view_history_btn.setStyleSheet(button_style)
+        self.view_history_btn.setFixedWidth(190)
+        self.view_history_btn.clicked.connect(lambda: self.browser._open_cat_browser_page("cat-browser://history"))
+        history_layout.addWidget(self.view_history_btn)
         self.main_layout.addWidget(history_group)
         reset_group = QGroupBox("Reset")
         reset_group.setStyleSheet(group_box_style)
@@ -3025,7 +3049,6 @@ class SettingsTab(QWidget):
             self.browser.history = []
             if os.path.exists(HISTORY_FILE):
                 os.remove(HISTORY_FILE)
-            self.update_history_view()
 
     def reset_settings(self):
         msg = QMessageBox(self)
@@ -3176,9 +3199,6 @@ class SettingsTab(QWidget):
         for site,info in self.browser.passwords.items():
             s += f"{site} - {info['user']} / {info['pass']}\n"
         self.pw_text.setText(s)
-
-    def update_history_view(self):
-        self.hist_text.setText("\n".join(self.browser.history))
 
     def import_csv(self):
         path,_ = QFileDialog.getOpenFileName(self,
@@ -3664,11 +3684,57 @@ class Browser(QMainWindow):
         dl_btn.clicked.connect(self.show_downloads)
         self.nav_toolbar.addWidget(dl_btn)
 
-        self.focus_btn = QPushButton("⊡")
+        bm_btn = QPushButton("★")
+        bm_btn.setFixedSize(32, 32)
+        bm_btn.setToolTip("Bookmark this page")
+        bm_btn.clicked.connect(self.bookmark_current_page)
+        self.nav_toolbar.addWidget(bm_btn)
+
+        self.focus_btn = QPushButton("⛶")
         self.focus_btn.setFixedSize(32, 32)
         self.focus_btn.setToolTip("Focus mode")
         self.focus_btn.clicked.connect(self.toggle_tab_focus)
         self.nav_toolbar.addWidget(self.focus_btn)
+
+        self.bookmarks_bar_visible = True
+        self.bookmarks_bar_wrapper = QWidget()
+        self.bookmarks_bar_wrapper.setFixedHeight(30)
+        self.bookmarks_bar_wrapper.setStyleSheet("background: #232323; border-top: 1px solid #3c3c3c;")
+        wrapper_layout = QHBoxLayout(self.bookmarks_bar_wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(0)
+
+        self.bookmarks_scroll = QScrollArea()
+        self.bookmarks_scroll.setWidgetResizable(True)
+        self.bookmarks_scroll.setFixedHeight(30)
+        self.bookmarks_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.bookmarks_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.bookmarks_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        def _bm_wheel(event):
+            sb = self.bookmarks_scroll.horizontalScrollBar()
+            sb.setValue(sb.value() - event.angleDelta().y())
+        self.bookmarks_scroll.wheelEvent = _bm_wheel
+
+        self.bookmarks_bar = QWidget()
+        self.bookmarks_bar.setStyleSheet("background: transparent;")
+        self.bookmarks_bar_layout = QHBoxLayout(self.bookmarks_bar)
+        self.bookmarks_bar_layout.setContentsMargins(6, 2, 6, 2)
+        self.bookmarks_bar_layout.setSpacing(2)
+        self.bookmarks_bar_layout.addStretch()
+        self.bookmarks_scroll.setWidget(self.bookmarks_bar)
+        wrapper_layout.addWidget(self.bookmarks_scroll, 1)
+
+        toggle_bm_btn = QPushButton("▾")
+        toggle_bm_btn.setFixedSize(24, 30)
+        toggle_bm_btn.setToolTip("Hide bookmarks bar")
+        toggle_bm_btn.setStyleSheet("""
+            QPushButton { background: transparent; color: #888; border: none; font-size: 14px; }
+            QPushButton:hover { color: white; background: #3c3c3c; }
+        """)
+        toggle_bm_btn.clicked.connect(self.toggle_bookmarks_bar)
+        self.toggle_bm_btn = toggle_bm_btn
+        wrapper_layout.addWidget(toggle_bm_btn)
 
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
@@ -3681,6 +3747,10 @@ class Browser(QMainWindow):
         self.vtab_bar.setVisible(self.settings.get("vertical_tabs", False))
         body.addWidget(self.vtab_bar)
 
+        tabs_and_bm = QVBoxLayout()
+        tabs_and_bm.setContentsMargins(0, 0, 0, 0)
+        tabs_and_bm.setSpacing(0)
+
         self.tabs = QTabWidget()
         self.tabs.setTabBar(ModernTabBar())
         self.tabs.setTabsClosable(True)
@@ -3688,11 +3758,18 @@ class Browser(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.close_tab_with_checks)
         self.tabs.currentChanged.connect(self._on_tab_changed_internal)
         self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", False))
-        body.addWidget(self.tabs, 1)
+        tabs_and_bm.addWidget(self.tabs, 1)
+        tabs_and_bm.addWidget(self.bookmarks_bar_wrapper)
+
+        tabs_and_bm_widget = QWidget()
+        tabs_and_bm_widget.setLayout(tabs_and_bm)
+        body.addWidget(tabs_and_bm_widget, 1)
 
         body_widget = QWidget()
         body_widget.setLayout(body)
         root_layout.addWidget(body_widget, 1)
+
+        self.refresh_bookmarks_bar()
 
         self.setCentralWidget(central)
 
@@ -4210,16 +4287,174 @@ class Browser(QMainWindow):
 
     def update_url_bar_placeholder(self):
         self.url_bar.setPlaceholderText(
-            self.translator.tr("search_placeholder", "Search {} or type a URL").format(self.current_search_engine)
+            self.translator.tr("search_placeholder", "search {} or type a URL").format(self.current_search_engine)
         )
 
     def get_search_url(self, query):
         from urllib.parse import quote
-        if '.' in query and ' ' not in query and not query.startswith(('http://','https://')):
+        if query.startswith(('http://', 'https://', 'cat-browser://', 'file://', 'about:')):
+            return query
+        if '.' in query and ' ' not in query:
             return "https://" + query
-        else:
-            search_template = self.search_engines.get(self.current_search_engine, "https://www.google.com/search?q={}")
-            return search_template.format(quote(query))
+        search_template = self.search_engines.get(self.current_search_engine, "https://www.google.com/search?q={}")
+        return search_template.format(quote(query))
+
+
+    CAT_BROWSER_PAGES = {
+        "newtab":    "new_tab",
+        "settings":  "settings",
+        "history":   "history",
+        "version":   "version",
+    }
+
+    def _open_cat_browser_page(self, url: str):
+        page = url.replace("cat-browser://", "").strip("/").lower()
+
+        if page in ("settings", ""):
+            self.open_settings_tab()
+            self.url_bar.setText("cat-browser://settings")
+            return
+
+        if page in ("newtab", "new-tab", "new_tab"):
+            self.add_tab(is_new_tab=True)
+            return
+
+        if page in ("history",):
+            self._show_cat_browser_html_page("cat-browser://history", self._build_history_page(), "History")
+            return
+
+        if page in ("version", "about"):
+            self._show_cat_browser_html_page("cat-browser://version", self._build_version_page(), "about cat browser")
+            return
+
+        if page in ("offline",):
+            soggy_path = os.path.join(BASE_PATH, "soggy.png")
+            base_url = QUrl.fromLocalFile(BASE_PATH + os.sep)
+            html = build_offline_game_html(soggy_path)
+            self._show_cat_browser_html_page_with_base("cat-browser://offline", html, "No Internet", base_url)
+            return
+
+        html = self._build_error_page(page)
+        self._show_cat_browser_html_page(url, html, f"cat-browser://{page}")
+
+    def _show_cat_browser_html_page(self, url: str, html: str, title: str):
+        current_tab = self.tabs.currentWidget()
+
+        if current_tab and hasattr(current_tab, 'new_tab_page') and current_tab.new_tab_page:
+            layout = current_tab.layout()
+            if layout:
+                current_tab.new_tab_page.setParent(None)
+                current_tab.new_tab_page.deleteLater()
+                current_tab.new_tab_page = None
+                current_tab.web_view = InspectorWebView(current_tab.profile, current_tab, browser=self)
+                current_tab.web_view.setHtml(html, QUrl(url))
+                tab_index = self.tabs.indexOf(current_tab)
+                self.tabs.setTabText(tab_index, title)
+                self.url_bar.setText(url)
+                layout.addWidget(current_tab.web_view)
+                return
+
+        browser = self.current_browser()
+        if browser:
+            browser.setHtml(html, QUrl(url))
+            self.url_bar.setText(url)
+            tab_index = self.tabs.currentIndex()
+            self.tabs.setTabText(tab_index, title)
+            return
+
+        new_tab = Tab(self.profile, None, False, self, self.translator, self.theme_engine)
+        i = self.tabs.addTab(new_tab, title)
+        self.tabs.setCurrentIndex(i)
+        if new_tab.web_view:
+            new_tab.web_view.setHtml(html, QUrl(url))
+        self.url_bar.setText(url)
+
+    def _show_cat_browser_html_page_with_base(self, url: str, html: str, title: str, base_url: QUrl):
+        current_tab = self.tabs.currentWidget()
+
+        if current_tab and hasattr(current_tab, 'new_tab_page') and current_tab.new_tab_page:
+            layout = current_tab.layout()
+            if layout:
+                current_tab.new_tab_page.setParent(None)
+                current_tab.new_tab_page.deleteLater()
+                current_tab.new_tab_page = None
+                current_tab.web_view = InspectorWebView(current_tab.profile, current_tab, browser=self)
+                current_tab.web_view.setHtml(html, base_url)
+                tab_index = self.tabs.indexOf(current_tab)
+                self.tabs.setTabText(tab_index, title)
+                self.url_bar.setText(url)
+                layout.addWidget(current_tab.web_view)
+                return
+
+        browser = self.current_browser()
+        if browser:
+            browser.setHtml(html, base_url)
+            self.url_bar.setText(url)
+            self.tabs.setTabText(self.tabs.currentIndex(), title)
+            return
+
+        new_tab = Tab(self.profile, None, False, self, self.translator, self.theme_engine)
+        i = self.tabs.addTab(new_tab, title)
+        self.tabs.setCurrentIndex(i)
+        if new_tab.web_view:
+            new_tab.web_view.setHtml(html, base_url)
+        self.url_bar.setText(url)
+
+    def _build_history_page(self) -> str:
+        items_html = ""
+        for entry in reversed(self.history[-200:]):
+            if entry and not entry.startswith("about:"):
+                safe = entry.replace("&", "&amp;").replace("<", "&lt;")
+                items_html += f'<li><a href="{safe}" onclick="window.location.href=this.href;return false;">{safe}</a></li>\n'
+        if not items_html:
+            items_html = "<li style='color:#888'>no history</li>"
+        return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>History</title>
+        <style>
+          body {{ background:#1a1a1a; color:white; font-family:sans-serif; padding:40px; }}
+          h1 {{ color:#0078d4; }}
+          ul {{ list-style:none; padding:0; }}
+          li {{ padding:6px 0; border-bottom:1px solid #333; }}
+          a {{ color:#7ec8ff; text-decoration:none; font-size:14px; }}
+          a:hover {{ text-decoration:underline; }}
+        </style></head><body>
+        <h1>history</h1>
+        <ul>{items_html}</ul>
+        </body></html>"""
+
+    def _build_version_page(self) -> str:
+        return """<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>about cat browser</title>
+        <style> 
+          body {{ background:#1a1a1a; color:white; font-family:sans-serif;
+                 display:flex; flex-direction:column; align-items:center;
+                 justify-content:center; height:100vh; margin:0; }}
+          h1 {{ color:#0078d4; font-size:48px; margin-bottom:8px; }}
+          .ver {{ color:#aaa; font-size:20px; }}
+          .sub {{ color:#666; font-size:14px; margin-top:20px; }}
+          table {{ margin-top:30px; border-collapse:collapse; }}
+          td {{ padding:8px 20px; border-bottom:1px solid #333; color:#ccc; font-size:14px; }}
+          td:first-child {{ color:#0078d4; font-weight:bold; }}
+        </style></head><body>
+        <h1>cat browser</h1>
+        <div class="ver">version 0.9.1</div>
+        </body></html>"""
+
+    def _build_error_page(self, page: str) -> str:
+        known = ["settings", "newtab", "history", "version", "about", "offline"]
+        links = "".join(f'<li><a href="cat-browser://{p}">cat-browser://{p}</a></li>' for p in known)
+        return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+        <title>Unknown Page</title>
+        <style>
+          body {{ background:#1a1a1a; color:white; font-family:sans-serif; padding:60px; }}
+          h1 {{ color:#ff6b6b; }}
+          a {{ color:#7ec8ff; }}
+          ul {{ margin-top:20px; line-height:2; }}
+        </style></head><body>
+        <h1>Unknown page: cat-browser://{page}</h1>
+        <p>Available internal pages:</p>
+        <ul>{links}</ul>
+        </body></html>"""
 
     def set_search_engine(self, engine_name):
         if engine_name in self.search_engines:
@@ -4410,13 +4645,41 @@ class Browser(QMainWindow):
         url = self.url_bar.text().strip()
         if not url:
             return
-        if not url.startswith(("http://","https://")):
-            url = self.get_search_url(url)
+
+        if url.startswith("cat-browser://"):
+            self._open_cat_browser_page(url)
+            return
+
+        url = self.get_search_url(url)
+
+        current_tab = self.tabs.currentWidget()
+
+        if current_tab and hasattr(current_tab, 'new_tab_page') and current_tab.new_tab_page:
+            layout = current_tab.layout()
+            if layout:
+                current_tab.new_tab_page.setParent(None)
+                current_tab.new_tab_page.deleteLater()
+                current_tab.new_tab_page = None
+
+                current_tab.web_view = InspectorWebView(current_tab.profile, current_tab, browser=self)
+                current_tab.web_view.setUrl(QUrl(url))
+
+                tab_index = self.tabs.indexOf(current_tab)
+                current_tab.web_view.urlChanged.connect(lambda u, t=current_tab: self.on_url_change(t))
+                current_tab.web_view.titleChanged.connect(lambda t, i=tab_index: self.on_title_change(t, i))
+                current_tab.web_view.iconChanged.connect(lambda icon, i=tab_index: self.on_icon_change(icon, i))
+                current_tab.web_view.urlChanged.connect(lambda u: self.history.append(current_tab.web_view.url().toString()))
+                layout.addWidget(current_tab.web_view)
+                self.tab_last_accessed[id(current_tab)] = datetime.now()
+                self.tabs.setTabText(tab_index, self.translator.tr("loading", "Loading..."))
+            return
+
         browser = self.current_browser()
         if browser:
             browser.setUrl(QUrl(url))
-        else:
-            self.add_tab(url)
+            return
+
+        self.add_tab(url)
 
     def on_url_change(self, tab):
         if self.tabs.currentWidget() == tab and hasattr(tab, 'web_view') and tab.web_view:
@@ -4460,23 +4723,146 @@ class Browser(QMainWindow):
         self.download_manager.show()
         self.download_manager.raise_()
 
+    def load_bookmarks(self):
+        try:
+            if os.path.exists(BOOKMARKS_FILE):
+                with open(BOOKMARKS_FILE, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except:
+            pass
+        return []
+
+    def save_bookmarks(self, bookmarks):
+        try:
+            with open(BOOKMARKS_FILE, "w", encoding="utf-8") as f:
+                json.dump(bookmarks, f, indent=2)
+        except:
+            pass
+
+    def refresh_bookmarks_bar(self):
+        while self.bookmarks_bar_layout.count():
+            item = self.bookmarks_bar_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        bookmarks = self.load_bookmarks()
+
+        if not bookmarks:
+            self.bookmarks_bar_wrapper.hide()
+            return
+
+        if self.bookmarks_bar_visible:
+            self.bookmarks_bar_wrapper.show()
+
+        btn_style = """
+            QPushButton {
+                background: transparent;
+                color: #ccc;
+                border: none;
+                padding: 2px 6px;
+                font-size: 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background: #3c3c3c; color: white; }
+            QPushButton:pressed { background: #4a4a4a; }
+        """
+        x_style = """
+            QPushButton {
+                background: transparent;
+                color: #666;
+                border: none;
+                padding: 0px 3px;
+                font-size: 11px;
+                border-radius: 3px;
+            }
+            QPushButton:hover { background: #c0392b; color: white; }
+        """
+
+        for bm in bookmarks:
+            pair = QWidget()
+            pair.setStyleSheet("background: transparent;")
+            pair_layout = QHBoxLayout(pair)
+            pair_layout.setContentsMargins(0, 0, 0, 0)
+            pair_layout.setSpacing(0)
+
+            name_btn = QPushButton(bm['name'][:24])
+            name_btn.setToolTip(bm['url'])
+            name_btn.setStyleSheet(btn_style)
+            name_btn.clicked.connect(lambda checked, u=bm['url']: self.navigate_to_url_direct(u))
+
+            x_btn = QPushButton("✕")
+            x_btn.setFixedSize(16, 20)
+            x_btn.setToolTip(f"Remove {bm['name']}")
+            x_btn.setStyleSheet(x_style)
+            x_btn.clicked.connect(lambda checked, u=bm['url']: self._remove_bookmark(u))
+
+            pair_layout.addWidget(name_btn)
+            pair_layout.addWidget(x_btn)
+            self.bookmarks_bar_layout.addWidget(pair)
+
+        self.bookmarks_bar_layout.addStretch()
+
+    def toggle_bookmarks_bar(self):
+        bookmarks = self.load_bookmarks()
+        if not bookmarks:
+            return
+        self.bookmarks_bar_visible = not self.bookmarks_bar_visible
+        self.bookmarks_scroll.setVisible(self.bookmarks_bar_visible)
+        if self.bookmarks_bar_visible:
+            self.toggle_bm_btn.setText("▾")
+            self.toggle_bm_btn.setToolTip("Hide bookmarks bar")
+            self.bookmarks_bar_wrapper.setFixedHeight(27)
+        else:
+            self.toggle_bm_btn.setText("▸")
+            self.toggle_bm_btn.setToolTip("Show bookmarks bar")
+            self.bookmarks_bar_wrapper.setFixedHeight(27)
+
+    def _remove_bookmark(self, url):
+        bookmarks = self.load_bookmarks()
+        bookmarks = [b for b in bookmarks if b['url'] != url]
+        self.save_bookmarks(bookmarks)
+        self.refresh_bookmarks_bar()
+
+    def navigate_to_url_direct(self, url):
+        self.url_bar.setText(url)
+        self.navigate_to_url()
+
+    def bookmark_current_page(self):
+        browser = self.current_browser()
+        if not browser:
+            return
+        url = browser.url().toString()
+        if not url or url.startswith("about:"):
+            return
+        title = self.tabs.tabText(self.tabs.currentIndex()).replace("...", "").strip()
+        if not title:
+            title = url
+        bookmarks = self.load_bookmarks()
+        if not any(b['url'] == url for b in bookmarks):
+            bookmarks.append({'name': title, 'url': url})
+            self.save_bookmarks(bookmarks)
+            self.refresh_bookmarks_bar()
+
     def toggle_tab_focus(self):
         focused = getattr(self, '_tab_focused', False)
         if focused:
             self.nav_toolbar.show()
+            if self.load_bookmarks():
+                self.bookmarks_bar_wrapper.show()
             if hasattr(self, 'vtab_bar'):
                 self.vtab_bar.setVisible(self.settings.get("vertical_tabs", False))
             self.tabs.tabBar().setVisible(not self.settings.get("vertical_tabs", False))
-            self.focus_btn.setText("⊡")
-            self.focus_btn.setToolTip("Focus mode")
+            self.focus_btn.setText("⛶")
+            self.focus_btn.setToolTip("focus mode")
             self._tab_focused = False
             self._hide_hover_bar()
         else:
             self.nav_toolbar.hide()
+            self.bookmarks_bar_wrapper.hide()
             if hasattr(self, 'vtab_bar'):
                 self.vtab_bar.hide()
             self.tabs.tabBar().hide()
-            self.focus_btn.setText("⊟")
+            self.focus_btn.setText("⛶")
             self.focus_btn.setToolTip("exit focus mode")
             self._tab_focused = True
 
@@ -4568,7 +4954,7 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
         crash_handler_enabled = True
         crash_dialog_enabled = True
 
-        for widget in app.topLevelWidgets():  # ADD THIS - you're missing the loop!
+        for widget in app.topLevelWidgets():
             try:
                 if isinstance(widget, Browser):
                     crash_handler_enabled = widget.settings.get("crash_handler_enabled", True)
