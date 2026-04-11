@@ -8,8 +8,11 @@ import importlib.util
 import inspect
 import re
 import psutil
+import shutil
+import platform
 from datetime import datetime, timedelta
 from urllib.parse import quote
+
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLineEdit, QToolBar, QTabWidget, QWidget,
     QVBoxLayout, QLabel, QTabBar, QPushButton, QStackedLayout, QFileDialog,
@@ -36,8 +39,6 @@ try:
 except ImportError:
     DISCORD_RPC_AVAILABLE = False
 
-
-
 if getattr(sys, 'frozen', False):
     BASE_PATH = os.path.dirname(os.path.abspath(sys.executable))
 else:
@@ -51,21 +52,47 @@ FACTS_FILE     = os.path.join(BASE_PATH, "facts.txt")
 LANGUAGES_FILE = os.path.join(BASE_PATH, "languages.txt")
 SPLASH_VIDEO   = os.path.join(BASE_PATH, "splash.mp4")
 
+if platform.system() == "Linux":
+    USER_ROOT = os.path.expanduser("~/.cat_browser")
 
+elif platform.system() == "Windows":
+    base = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+    USER_ROOT = os.path.join(base, "cat_browser")
 
-DATA_DIR       = os.path.join(os.path.expanduser("~"), ".cat_browser")
-os.makedirs(DATA_DIR, exist_ok=True)
+else:
+    USER_ROOT = os.path.expanduser("~/.cat_browser")
 
-EXTENSIONS_DIR = os.path.join(DATA_DIR, "extensions")
-os.makedirs(EXTENSIONS_DIR, exist_ok=True)
+OLD_SETUP_FILE = os.path.join(USER_ROOT, "setup_completed.json")
+NEW_DATA_DIR = os.path.join(USER_ROOT, "data")
+NEW_SETUP_FILE = os.path.join(NEW_DATA_DIR, "setup_completed.json")
 
-FAVICON_DIR    = os.path.join(DATA_DIR, "favicons")
-os.makedirs(FAVICON_DIR, exist_ok=True)
+os.makedirs(USER_ROOT, exist_ok=True)
 
-THEMES_DIR     = os.path.join(DATA_DIR, "themes")
-os.makedirs(THEMES_DIR, exist_ok=True)
+if os.path.exists(OLD_SETUP_FILE) and not os.path.exists(NEW_SETUP_FILE):
+    PRESERVE_FOLDERS = {"themes", "extensions"}
 
+    for item in os.listdir(USER_ROOT):
+        item_path = os.path.join(USER_ROOT, item)
 
+        if item in PRESERVE_FOLDERS:
+            continue
+
+        try:
+            if os.path.isdir(item_path):
+                shutil.rmtree(item_path)
+            else:
+                os.remove(item_path)
+        except Exception as e:
+            print(f"could not delete {item_path}: {e}")
+
+    print("Cleanup complete. Rebuilding structure...")
+
+DATA_DIR = os.path.join(USER_ROOT, "data")
+EXTENSIONS_DIR = os.path.join(USER_ROOT, "extensions")
+THEMES_DIR = os.path.join(USER_ROOT, "themes")
+
+for folder in [DATA_DIR, EXTENSIONS_DIR, THEMES_DIR]:
+    os.makedirs(folder, exist_ok=True)
 
 HISTORY_FILE       = os.path.join(DATA_DIR, "history.json")
 PASSWORDS_FILE     = os.path.join(DATA_DIR, "passwords.csv")
@@ -128,7 +155,7 @@ class CrashDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        desc = QLabel("something went wrong but dont worry you can restart and it will be fine!!!!!!\nif the same error happens again, consider reporting this bug in the discord server, cat browser community and paste the log")
+        desc = QLabel("something went wrong but dont worry you can restart and it will be fine!!!!!!\nif the same error happens again, consider reporting this bug in the discord server, cat browser community, or on github issues, and paste the log")
         desc.setWordWrap(True)
         desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(desc)
@@ -185,6 +212,82 @@ class CrashDialog(QDialog):
             os.execl(executable, executable, *sys.argv[1:])
         else:
             os.execl(executable, executable, script, *sys.argv[1:])
+
+
+class WebViewCrashDialog(QDialog):
+    reload_requested = Signal()
+
+    def __init__(self, url, status, parent=None):
+        super().__init__(parent)
+        self.url = url
+        self.setWindowTitle("page crashed")
+        self.setFixedSize(560, 380)
+        self.setStyleSheet("""
+            QDialog { background: #1a1a1a; color: white; }
+            QLabel { color: white; font-size: 14px; }
+            QTextEdit {
+                background: #2b2b2b; color: #ff6b6b;
+                border: 1px solid #444; border-radius: 8px;
+                font-family: monospace; font-size: 11px;
+            }
+            QPushButton {
+                background: #0078d4; color: white; border: none;
+                padding: 10px 20px; border-radius: 14px;
+                font-size: 14px; font-weight: bold; min-width: 120px;
+            }
+            QPushButton:hover { background: #106ebe; }
+            QPushButton:pressed { background: #005a9e; }
+        """)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        title = QLabel("aw, this page crashed :(")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ff6b6b;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        desc = QLabel(
+            "the renderer process for this tab died unexpectedly\n"
+            "the rest of the browser is completely fine!!\n"
+            "you can reload the page or just close this dialog"
+        )
+        desc.setWordWrap(True)
+        desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(desc)
+
+        info = QTextEdit()
+        info.setReadOnly(True)
+        info.setFixedHeight(80)
+        info.setText(f"url: {url}\nreason: {status}")
+        layout.addWidget(info)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(10)
+
+        reload_btn = QPushButton("reload page")
+        reload_btn.clicked.connect(self._on_reload)
+        btn_row.addWidget(reload_btn)
+
+        close_btn = QPushButton("close")
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background: #555; color: white; border: none;
+                padding: 10px 20px; border-radius: 14px;
+                font-size: 14px; font-weight: bold; min-width: 120px;
+            }
+            QPushButton:hover { background: #666; }
+            QPushButton:pressed { background: #444; }
+        """)
+        close_btn.clicked.connect(self.reject)
+        btn_row.addWidget(close_btn)
+
+        layout.addLayout(btn_row)
+
+    def _on_reload(self):
+        self.reload_requested.emit()
+        self.accept()
 
 class SoundManager:
     def __init__(self):
@@ -252,7 +355,7 @@ class SoundManager:
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
             for sound_name, sound_data in self.sounds.items():
                 if sound_data['player'] and sound_data['player']['player'] == player:
-                    QTimer.singleShot(100, lambda: self.cleanup_player(sound_name))
+                    QTimer.singleShot(100, lambda sn=sound_name: self.cleanup_player(sn))
                     break
     
     def cleanup_player(self, sound_name):
@@ -698,6 +801,10 @@ class ThemeEngine:
         self.reset_to_default_font()
 
         default_css = """
+        QWidget {
+            background-color: #1b1b1b;
+            color: #ffffff;
+        }
         QMainWindow {
             background: #1b1b1b;
             color: white;
@@ -823,7 +930,10 @@ class ThemeEngine:
             "forward": "▶",
             "reload": "↻",
             "settings": "⚙",
-            "plus": "+"
+            "plus": "+",
+            "downloads": "↓",
+            "bookmark": "★",
+            "focus": "⛶",
         }
 
         try:
@@ -848,7 +958,10 @@ class ThemeEngine:
             "▶": "forward",
             "↻": "reload",
             "⚙": "settings",
-            "+": "plus"
+            "+": "plus",
+            "↓": "downloads",
+            "★": "bookmark",
+            "⛶": "focus",
         }
 
         try:
@@ -1185,7 +1298,6 @@ class CustomNewTabPage(QWidget):
             self.custom_bg_applied = False
             self.original_pixmap = None
 
-
     def load_fun_fact(self):
         if os.path.exists(FACTS_FILE):
             with open(FACTS_FILE, "r", encoding="utf-8") as f:
@@ -1294,7 +1406,6 @@ class CustomNewTabPage(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-
         credits_text = QLabel()
         credits_text.setTextFormat(Qt.TextFormat.RichText)
         credits_text.setWordWrap(True)
@@ -1308,7 +1419,6 @@ class CustomNewTabPage(QWidget):
         <p><b>nmlsspersonn1033 - Discord / @nmlssperson1033 - Telegram</b></p>
         <p><b>monoes1 - Discord</b></p>
         <p><b>rizakai - Discord</b></p>
-
 
         <h3>{self.translator.tr('special_thanks', 'Special Thanks')}</h3>
         <p>PyQt6 Team  - {self.translator.tr('for_webengine', 'For the WebEngine')}</p>
@@ -1342,7 +1452,7 @@ class InspectorWebPage(QWebEnginePage):
             if self.parent_browser:
                 from PyQt6.QtCore import QTimer
                 url_str = url.toString()
-                QTimer.singleShot(0, lambda: self.parent_browser._open_cat_browser_page(url_str))
+                QTimer.singleShot(0, lambda u=url_str: self.parent_browser._open_cat_browser_page(u))
             return False
         return super().acceptNavigationRequest(url, nav_type, is_main_frame)
 
@@ -1603,7 +1713,6 @@ loop();
 </script>
 </body></html>"""
 
-
 class InspectorWebView(QWebEngineView):
     def __init__(self, profile, parent=None, browser=None):
         super().__init__(parent)
@@ -1615,6 +1724,7 @@ class InspectorWebView(QWebEngineView):
         self._last_requested_url = ""
         self.loadStarted.connect(self._on_load_started)
         self.loadFinished.connect(self._on_load_finished)
+        self.page().renderProcessTerminated.connect(self._on_render_process_terminated)
 
     def _on_load_started(self):
         self._last_requested_url = self.url().toString()
@@ -1624,7 +1734,6 @@ class InspectorWebView(QWebEngineView):
             return
         current_url = self.url().toString()
         OFFLINE_ERRORS = (
-            "ERR_NAME_NOT_RESOLVED",
             "ERR_INTERNET_DISCONNECTED",
             "ERR_NETWORK_CHANGED",
             "ERR_CONNECTION_REFUSED",
@@ -1663,141 +1772,126 @@ class InspectorWebView(QWebEngineView):
                     self.parent_browser.tabs.setTabText(tab_index, "No Internet")
                 self.parent_browser.url_bar.setText(url)
 
+    def _on_render_process_terminated(self, status, exit_code):
+        from PyQt6.QtWebEngineCore import QWebEnginePage
+        S = QWebEnginePage.RenderProcessTerminationStatus
+        if status == S.NormalTerminationStatus:
+            return
+
+        url = self._last_requested_url or self.url().toString() or ""
+        reason_map = {
+            S.AbnormalTerminationStatus: f"abnormal exit (code {exit_code})",
+            S.CrashedTerminationStatus:  f"renderer crashed (code {exit_code})",
+            S.KilledTerminationStatus:   f"renderer killed (code {exit_code})",
+        }
+        reason = reason_map.get(status, f"unknown ({exit_code})")
+        print(f"webview crash: {reason} — {url or 'unknown page'}")
+
+        if not self.parent_browser or not url:
+            QTimer.singleShot(0, lambda: self.setUrl(QUrl("about:blank")))
+            return
+
+        tab = self.parent()
+        while tab and not isinstance(tab, Tab):
+            tab = tab.parent()
+
+        if tab and hasattr(tab, 'web_view') and tab.web_view is self:
+            QTimer.singleShot(0, lambda: self._recreate_in_tab(tab, url))
+        else:
+            QTimer.singleShot(0, lambda u=url: self.setUrl(QUrl(u)))
+
+    def _recreate_in_tab(self, tab, url):
+        try:
+            layout = tab.layout()
+            if not layout:
+                return
+
+            try:
+                self.page().renderProcessTerminated.disconnect()
+            except Exception:
+                pass
+
+            new_view = InspectorWebView(tab.profile, tab, browser=self.parent_browser)
+            new_view.setUrl(QUrl(url))
+
+            tab_index = self.parent_browser.tabs.indexOf(tab)
+
+            new_view.urlChanged.connect(lambda u, t=tab: self.parent_browser.on_url_change(t))
+            new_view.titleChanged.connect(lambda t, tb=tab: self.parent_browser.on_title_change(t, self.parent_browser.tabs.indexOf(tb)))
+            new_view.iconChanged.connect(lambda icon, tb=tab: self.parent_browser.on_icon_change(icon, self.parent_browser.tabs.indexOf(tb)))
+            new_view.urlChanged.connect(lambda u: self.parent_browser.history.append(new_view.url().toString()))
+
+            layout.addWidget(new_view)
+            tab.web_view = new_view
+
+            self.hide()
+            self.deleteLater()
+
+            if tab_index >= 0:
+                self.parent_browser.tabs.setTabText(tab_index, "Reloading...")
+            self.parent_browser.url_bar.setText(url)
+
+            print(f"webview crash: tab {tab_index} renderer recreated, reloading {url}")
+
+        except Exception as e:
+            print(f"webview crash: failed to recreate tab — {e}")
+            try:
+                self.setUrl(QUrl(url))
+            except Exception:
+                pass
+
     def contextMenuEvent(self, event):
         menu = self.createStandardContextMenu()
 
-        inspect_action = QAction("Inspect Element", menu)
-        inspect_action.triggered.connect(self.inspect_element)
-        menu.addAction(inspect_action)
+        menu.addSeparator()
+        devtools_action = QAction("Developer Tools", menu)
+        devtools_action.triggered.connect(self.open_dev_tools)
+        menu.addAction(devtools_action)
 
         menu.exec(event.globalPos())
 
-    def inspect_element(self):
-        self.page().runJavaScript("""
-            (function() {
-                if (!window.__cat_inspector) {
-                    window.__cat_inspector = true;
-                    var style = document.createElement('style');
-                    style.innerHTML = `
-                        *:hover {
-                            outline: 2px solid red !important;
-                            outline-offset: -2px;
-                            cursor: crosshair;
-                        }
-                    `;
-                    document.head.appendChild(style);
+    def open_dev_tools(self):
+        if not hasattr(self, '_devtools_view') or self._devtools_view is None:
+            self._devtools_view = QWebEngineView()
+            self._devtools_view.setWindowTitle("Developer Tools — cat browser")
+            self._devtools_view.resize(1000, 650)
+            self._devtools_view.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+            self._devtools_view.destroyed.connect(self._on_dev_tools_closed)
+            self._devtools_view.page().renderProcessTerminated.connect(
+                self._on_dev_tools_process_terminated
+            )
 
-                    document.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        var element = e.target;
-                        var html = element.outerHTML.substring(0, 200);
-                        var info = {
-                            tag: element.tagName,
-                            id: element.id,
-                            className: element.className,
-                            html: html,
-                            xpath: getXPath(element)
-                        };
-                        window.__cat_last_inspected = info;
+        self.page().setDevToolsPage(self._devtools_view.page())
+        self._devtools_view.show()
+        self._devtools_view.raise_()
+        self._devtools_view.activateWindow()
 
-                        style.remove();
-                        window.__cat_inspector = false;
+    def _on_dev_tools_process_terminated(self, status, exit_code):
+        from PyQt6.QtWebEngineCore import QWebEnginePage
+        if status == QWebEnginePage.RenderProcessTerminationStatus.NormalTerminationStatus:
+            return
+        print(f"devtools renderer crashed (code {exit_code}) — closing devtools")
+        self._close_dev_tools()
 
-                        console.log('Inspected element:', info);
-                    }, true);
+    def _close_dev_tools(self):
+        if hasattr(self, '_devtools_view') and self._devtools_view:
+            try:
+                self.page().setDevToolsPage(None)
+            except Exception:
+                pass
+            try:
+                self._devtools_view.destroyed.disconnect(self._on_dev_tools_closed)
+            except Exception:
+                pass
+            self._devtools_view.close()
+            self._devtools_view = None
 
-                    function getXPath(element) {
-                        if (element.id !== '')
-                            return '//*[@id="' + element.id + '"]';
-                        if (element === document.body)
-                            return '/html/body';
-                        var ix = 0;
-                        var siblings = element.parentNode.childNodes;
-                        for (var i = 0; i < siblings.length; i++) {
-                            var sibling = siblings[i];
-                            if (sibling === element)
-                                return getXPath(element.parentNode) + '/' + element.tagName.toLowerCase() + '[' + (ix + 1) + ']';
-                            if (sibling.nodeType === 1 && sibling.tagName === element.tagName)
-                                ix++;
-                        }
-                    }
-                }
-            })();
-        """)
-
-        self.show_inspector_dialog()
-
-    def show_inspector_dialog(self):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Element Inspector")
-        dialog.setMinimumSize(600, 400)
-        dialog.setStyleSheet("""
-            QDialog {
-                background: #2b2b2b;
-                color: white;
-            }
-            QTextEdit {
-                background: #1a1a1a;
-                color: #00ff00;
-                font-family: 'Monospace';
-                font-size: 12px;
-                border: 1px solid #444;
-            }
-            QPushButton {
-                background: #0078d4;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 14px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: #106ebe;
-            }
-        """)
-
-        layout = QVBoxLayout(dialog)
-
-        self.inspector_text = QTextEdit()
-        self.inspector_text.setReadOnly(True)
-        layout.addWidget(self.inspector_text)
-
-        button_layout = QHBoxLayout()
-        refresh_btn = QPushButton("Refresh")
-        refresh_btn.clicked.connect(lambda: self.refresh_inspector(dialog))
-        button_layout.addWidget(refresh_btn)
-
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(dialog.accept)
-        button_layout.addWidget(close_btn)
-
-        layout.addLayout(button_layout)
-
-        self.refresh_inspector(dialog)
-        dialog.exec()
-
-    def refresh_inspector(self, dialog):
-        self.page().runJavaScript("""
-            (function() {
-                if (window.__cat_last_inspected) {
-                    return window.__cat_last_inspected;
-                }
-                return null;
-            })();
-        """, lambda result: self.display_inspector_result(result, dialog))
-
-    def display_inspector_result(self, result, dialog):
-        if result:
-            text = f"Tag: {result.get('tag', 'N/A')}\n"
-            text += f"ID: {result.get('id', 'N/A')}\n"
-            text += f"Class: {result.get('className', 'N/A')}\n"
-            text += f"XPath: {result.get('xpath', 'N/A')}\n"
-            text += f"HTML Preview:\n{result.get('html', 'N/A')}..."
-            self.inspector_text.setText(text)
-        else:
-            self.inspector_text.setText("No element inspected yet.\nClick 'Inspect Element' and then click on any element on the page.")
+    def _on_dev_tools_closed(self):
+        try:
+            self.page().setDevToolsPage(None)
+        except Exception:
+            pass
+        self._devtools_view = None
 
 class Tab(QWidget):
     def __init__(self, profile, url=None, is_new_tab=False, parent_browser=None, translator=None, theme_engine=None):
@@ -1812,10 +1906,6 @@ class Tab(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
-        if not is_new_tab and self.web_view:
-            self.web_view.urlChanged.connect(self.on_url_changed)
-            self.web_view.loadFinished.connect(self.on_page_loaded)
 
         if is_new_tab:
             self.new_tab_page = CustomNewTabPage(self.main_browser, self.translator, theme_engine)
@@ -1880,15 +1970,12 @@ class Tab(QWidget):
             if hasattr(self.main_browser, 'nav_toolbar'):
                 self.main_browser.nav_toolbar.show()
 
-
     def optimize_webview(self):
         if not getattr(self, "web_view", None):
             return
         page = self.web_view.page()
         settings = page.settings()
 
-        settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, False)
-        settings.setAttribute(QWebEngineSettings.WebAttribute.LocalStorageEnabled, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.PluginsEnabled, False)
         settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
 
@@ -1896,9 +1983,8 @@ class Tab(QWidget):
         def clear_cache():
             profile.clearHttpCache()
             profile.clearAllVisitedLinks()
-        QTimer.singleShot(1000 * 60 * 10, clear_cache)
+        QTimer.singleShot(1000 * 60 * 2, clear_cache)
         page.setBackgroundColor(Qt.GlobalColor.transparent)
-
 
 class SetupWizard(QDialog):
     finished = Signal()
@@ -2019,11 +2105,9 @@ class SetupWizard(QDialog):
         for lang in self.translator.languages.keys():
             self.language_combo.addItem(lang)
 
-
         current_index = self.language_combo.findText(self.translator.current_lang)
         if current_index >= 0:
             self.language_combo.setCurrentIndex(current_index)
-
 
         self.language_combo.currentTextChanged.connect(self.update_language)
 
@@ -2031,7 +2115,6 @@ class SetupWizard(QDialog):
         step2_layout.addStretch()
 
         self.setup_steps.append(step2_widget)
-
 
         step3_widget = QWidget()
         step3_layout = QVBoxLayout(step3_widget)
@@ -2045,7 +2128,6 @@ class SetupWizard(QDialog):
         self.desc3 = QLabel(self.translator.tr("setup_step3_desc", "Would you like to import passwords from a CSV file?\n\nYou can skip this and do it later from Settings."))
         self.desc3.setWordWrap(True)
         step3_layout.addWidget(self.desc3)
-
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(20)
@@ -2104,7 +2186,6 @@ class SetupWizard(QDialog):
 
         self.setup_steps.append(step3_widget)
 
-
         step4_widget = QWidget()
         step4_layout = QVBoxLayout(step4_widget)
         step4_layout.setSpacing(20)
@@ -2134,7 +2215,6 @@ class SetupWizard(QDialog):
         step4_layout.addStretch()
         self.setup_steps.append(step4_widget)
 
-
         step5_widget = QWidget()
         step5_layout = QVBoxLayout(step5_widget)
         step5_layout.setSpacing(20)
@@ -2149,9 +2229,6 @@ class SetupWizard(QDialog):
         self.desc5.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.desc5.setWordWrap(True)
         step5_layout.addWidget(self.desc5)
-
-
-
 
         self.credits_btn = QPushButton(self.translator.tr("see_credits", "See Credits"))
         self.credits_btn.setStyleSheet("""
@@ -2185,7 +2262,6 @@ class SetupWizard(QDialog):
 
             self.setWindowTitle(self.translator.tr("setup_wizard", "Setup Cat Browser"))
 
-
             self.title1.setText(self.translator.tr("welcome_title", "cat browser (real)"))
             self.desc1.setText(self.translator.tr("setup_step1_desc", "Let's set up your browser. First, choose your preferred search engine:"))
 
@@ -2205,7 +2281,6 @@ class SetupWizard(QDialog):
             self.desc5.setText(self.translator.tr("setup_ready", "Your browser is ready to use!\n\nEnjoy your stay with Cat Browser!"))
             self.credits_btn.setText(self.translator.tr("see_credits", "See Credits"))
 
-
             self.update_navigation_buttons()
 
     def update_navigation_buttons(self):
@@ -2220,10 +2295,8 @@ class SetupWizard(QDialog):
                 widget = child.widget()
                 widget.setParent(None)
 
-
         if step_index < len(self.setup_steps):
             self.layout.addWidget(self.setup_steps[step_index])
-
 
         if step_index != 2:
             button_layout = QHBoxLayout()
@@ -2307,7 +2380,6 @@ class SetupWizard(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-
         credits_text = QLabel()
         credits_text.setTextFormat(Qt.TextFormat.RichText)
         credits_text.setWordWrap(True)
@@ -2321,7 +2393,6 @@ class SetupWizard(QDialog):
         <p><b>nmlsspersonn1033 - Discord / @nmlssperson1033 - Telegram</b></p>
         <p><b>monoes1 - Discord</b></p>
         <p><b>rizakai - Discord</b></p>
-
 
         <h3>{self.translator.tr('special_thanks', 'Special Thanks')}</h3>
         <p>PyQt6 Team  - {self.translator.tr('for_webengine', 'For the WebEngine')}</p>
@@ -2352,7 +2423,6 @@ class SetupWizard(QDialog):
 
         self.browser.save_settings()
 
-
         with open(SETUP_FILE, 'w') as f:
             json.dump({'completed': True}, f)
 
@@ -2382,7 +2452,6 @@ class SetupWizard(QDialog):
                 error_title = self.translator.tr("error", "Error")
                 error_msg = self.translator.tr("import_failed", "Failed to import passwords: {}").format(str(e))
                 QMessageBox.warning(self, error_title, error_msg)
-
 
         self.show_step(3)
 
@@ -2483,7 +2552,7 @@ class WelcomeScreen(QWidget):
         super().__init__()
         print("splash screen: starting...")
 
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("background-color: #000000;")
         self.setFixedSize(659, 460)
 
@@ -2518,11 +2587,11 @@ class WelcomeScreen(QWidget):
         self.setLayout(layout)
         self.duration = duration
 
+        self._splash_finished = False
         self.close_timer = QTimer()
         self.close_timer.setSingleShot(True)
         self.close_timer.timeout.connect(self.close_splash)
         self.close_timer.start(duration)
-
 
     def on_media_status_changed(self, status):
         from PyQt6.QtMultimedia import QMediaPlayer
@@ -2531,7 +2600,9 @@ class WelcomeScreen(QWidget):
             self.close_splash()
 
     def close_splash(self):
-
+        if getattr(self, '_splash_finished', False):
+            return
+        self._splash_finished = True
         print("splash screen:: video ended")
         if hasattr(self, 'close_timer'):
             self.close_timer.stop()
@@ -2541,7 +2612,6 @@ class WelcomeScreen(QWidget):
         self.close()
 
     def closeEvent(self, event):
-
 
         self.close_splash()
         event.accept()
@@ -2574,7 +2644,7 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(title)
 
-        version_label = QLabel("version: 0.9.1")
+        version_label = QLabel("version: 1.0 release")
         version_label.setStyleSheet("""
             color: #b0b0b0;
             font-size: 12px;
@@ -2592,15 +2662,15 @@ class SettingsTab(QWidget):
         """)
         self.main_layout.addWidget(tab_count_label)
 
-        self.ram_label = QLabel("RAM: 0 MB")
-        self.ram_label.setStyleSheet("""
+        self.ram_webengine_label = QLabel("RAM: 0 MB")
+        self.ram_webengine_label.setStyleSheet("""
             color: #e0e0e0;
             font-size: 16px;
             background-color: transparent;
         """)
-        self.main_layout.addWidget(self.ram_label)
+        self.main_layout.addWidget(self.ram_webengine_label)
 
-        self.version = QLabel("0.9.1")
+        self.version = QLabel("1.0 release")
         self.version.setStyleSheet("""
             color: #e0e0e0;
             font-size: 16px;
@@ -2609,7 +2679,7 @@ class SettingsTab(QWidget):
 
         self.ram_timer = QTimer()
         self.ram_timer.timeout.connect(self.update_ram_usage)
-        self.ram_timer.start(1000)
+        self.ram_timer.start(2500)
 
         group_box_style = """
             QGroupBox {
@@ -2754,6 +2824,34 @@ class SettingsTab(QWidget):
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         theme_container_layout.addWidget(self.theme_combo)
 
+        theme_buttons_layout = QHBoxLayout()
+        theme_btn_style = """
+            QPushButton {
+                background: #0078d4;
+                color: white;
+                border: none;
+                padding: 6px 14px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background: #106ebe; }
+            QPushButton:pressed { background: #005a9e; }
+        """
+
+        self.open_theme_folder_btn = QPushButton(self.translator.tr("open_theme_folder", "Open Theme Folder"))
+        self.open_theme_folder_btn.setStyleSheet(theme_btn_style)
+        self.open_theme_folder_btn.clicked.connect(lambda: self._open_folder(THEMES_DIR))
+        theme_buttons_layout.addWidget(self.open_theme_folder_btn)
+
+        self.get_themes_btn = QPushButton(self.translator.tr("get_themes", "Get Themes"))
+        self.get_themes_btn.setStyleSheet(theme_btn_style)
+        self.get_themes_btn.clicked.connect(lambda: self.browser.add_tab("https://anamelessguy1.github.io/cat-browser-wow/"))
+        theme_buttons_layout.addWidget(self.get_themes_btn)
+
+        theme_buttons_layout.addStretch()
+        theme_container_layout.addLayout(theme_buttons_layout)
+
         general_layout.addRow(theme_label, theme_container)
         self.main_layout.addWidget(general_group)
 
@@ -2831,11 +2929,17 @@ class SettingsTab(QWidget):
         memory_layout = QVBoxLayout(memory_group)
         memory_layout.setSpacing(8)
 
-        self.memory_saver_checkbox = QCheckBox(self.translator.tr("memory_saver", "Memory Saver (unloads inactive tabs after 5 minutes)"))
-        self.memory_saver_checkbox.setChecked(self.browser.settings.get("memory_saver", False))
+        self.memory_saver_checkbox = QCheckBox(self.translator.tr("memory_saver", "Memory Saver (unloads inactive tabs after 2 minutes)"))
+        self.memory_saver_checkbox.setChecked(self.browser.settings.get("memory_saver", True))
         self.memory_saver_checkbox.setStyleSheet(checkbox_style)
         self.memory_saver_checkbox.stateChanged.connect(self.on_memory_saver_changed)
         memory_layout.addWidget(self.memory_saver_checkbox)
+
+        self.suspend_bg_js_checkbox = QCheckBox(self.translator.tr("suspend_bg_js", "Suspend tabs when inactive (saves system resources)"))
+        self.suspend_bg_js_checkbox.setChecked(self.browser.settings.get("suspend_bg_js", True))
+        self.suspend_bg_js_checkbox.setStyleSheet(checkbox_style)
+        self.suspend_bg_js_checkbox.stateChanged.connect(self.on_suspend_bg_js_changed)
+        memory_layout.addWidget(self.suspend_bg_js_checkbox)
 
         self.main_layout.addWidget(memory_group)
 
@@ -2907,6 +3011,17 @@ class SettingsTab(QWidget):
         self.reload_ext_btn.clicked.connect(self.reload_extensions)
 
         ext_buttons_layout.addWidget(self.reload_ext_btn)
+
+        self.open_ext_folder_btn = QPushButton(self.translator.tr("open_extension_folder", "Open Extension Folder"))
+        self.open_ext_folder_btn.setStyleSheet(button_style)
+        self.open_ext_folder_btn.clicked.connect(lambda: self._open_folder(EXTENSIONS_DIR))
+        ext_buttons_layout.addWidget(self.open_ext_folder_btn)
+
+        self.get_extensions_btn = QPushButton(self.translator.tr("get_extensions", "Get Extensions"))
+        self.get_extensions_btn.setStyleSheet(button_style)
+        self.get_extensions_btn.clicked.connect(lambda: self.browser.add_tab("https://anamelessguy1.github.io/cat-browser-wow/"))
+        ext_buttons_layout.addWidget(self.get_extensions_btn)
+
         ext_buttons_layout.addStretch()
 
         extensions_layout.addLayout(ext_buttons_layout)
@@ -3090,8 +3205,22 @@ class SettingsTab(QWidget):
 
     def update_ram_usage(self):
         process = psutil.Process(os.getpid())
-        ram_mb = process.memory_info().rss / 1024**2
-        self.ram_label.setText(f"RAM: {ram_mb:.1f} MB")
+        browsercore_mb = process.memory_info().rss / 1024**2
+        webengine_mb = 0.0
+        try:
+            for child in process.children(recursive=True):
+                try:
+                    name = child.name().lower()
+                    mem = child.memory_info().rss / 1024**2
+                    if any(x in name for x in ("qtwebengine", "chromium", "chrome", "renderer", "gpu-process", "zygote")):
+                        webengine_mb += mem
+                    else:
+                        browsercore_mb += mem
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+        self.ram_webengine_label.setText(f"RAM: {webengine_mb:.1f} MB")
 
     def on_language_changed(self, lang):
         if self.translator.set_language(lang):
@@ -3112,6 +3241,10 @@ class SettingsTab(QWidget):
         self.browser.settings["memory_saver"] = (state == Qt.CheckState.Checked.value)
         self.browser.save_settings()
         self.browser.enable_memory_saver(state == Qt.CheckState.Checked.value)
+
+    def on_suspend_bg_js_changed(self, state):
+        self.browser.settings["suspend_bg_js"] = (state == Qt.CheckState.Checked.value)
+        self.browser.save_settings()
 
     def on_restore_session_changed(self, state):
         self.browser.settings["restore_session"] = (state == Qt.CheckState.Checked.value)
@@ -3193,6 +3326,14 @@ class SettingsTab(QWidget):
             self.browser.reload_extensions()
         self.update_extensions_view()
         self.show_status_message("Extensions reloaded")
+
+    def _open_folder(self, folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+        if platform.system() == "Windows":
+            os.startfile(folder_path)
+        elif platform.system() == "Linux":
+            import subprocess
+            subprocess.Popen(["xdg-open", folder_path])
 
     def update_pw_view(self):
         s = ""
@@ -3315,7 +3456,6 @@ class VerticalTabEntry(QWidget):
             self.clicked.emit(self.tab_index)
         super().mousePressEvent(e)
 
-
 class VerticalTabBar(QWidget):
     tab_selected = Signal(int)
     tab_close_requested = Signal(int)
@@ -3428,7 +3568,8 @@ class VerticalTabBar(QWidget):
         return None
 
     def _reindex(self):
-        pass 
+        for i, entry in enumerate(self.entries):
+            entry.tab_index = i
 
     def _on_clicked(self, index):
         self.tab_selected.emit(index)
@@ -3441,7 +3582,6 @@ class VerticalTabBar(QWidget):
             QPushButton:pressed { background: #444; }
         """
 
-
 class _TopEdgeTracker(QWidget):
     def __init__(self, parent, browser):
         super().__init__(parent)
@@ -3453,7 +3593,6 @@ class _TopEdgeTracker(QWidget):
             self.browser._show_hover_bar()
         super().enterEvent(e)
 
-
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -3463,7 +3602,6 @@ class Browser(QMainWindow):
         self.watchdog_timer.timeout.connect(self.check_browser_health)
         self.watchdog_timer.start(30000)
         self.translator = Translator()
-        self.download_manager = DownloadManager(self, translator=self.translator)
         self.search_engines = {
             "Google": "https://www.google.com/search?q={}",
             "Bing": "https://www.bing.com/search?q={}",
@@ -3482,17 +3620,17 @@ class Browser(QMainWindow):
         self.current_theme = None
         self.current_search_engine = self.load_search_engine()
         self.settings = self.load_settings()
-
         lang = self.settings.get("language", "English")
         self.translator.set_language(lang)
-
         self.rpc = None
         self.init_discord_rpc()
-
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.profile = QWebEngineProfile("cat_profile")
         self.profile.setPersistentCookiesPolicy(QWebEngineProfile.PersistentCookiesPolicy.ForcePersistentCookies)
-        self.profile.setPersistentStoragePath(DATA_DIR)
-        self.profile.downloadRequested.connect(self.on_download)
+        chromium_data_dir = os.path.join(DATA_DIR, "chromium")
+        os.makedirs(chromium_data_dir, exist_ok=True)
+        self.profile.setPersistentStoragePath(chromium_data_dir)
+        self.profile.setCachePath(os.path.join(chromium_data_dir, "cache"))
         default_settings = self.profile.settings()
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.PlaybackRequiresUserGesture, False)
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.AllowRunningInsecureContent, True)
@@ -3507,19 +3645,12 @@ class Browser(QMainWindow):
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.PdfViewerEnabled, True)
         default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
         self.profile.setHttpUserAgent(self.profile.httpUserAgent())
-        default_settings = self.profile.settings()
-        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
-        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
-        default_settings.setAttribute(QWebEngineSettings.WebAttribute.FullScreenSupportEnabled, True)
-        default_settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-        self.profile.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
-        self.profile.settings().setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
-        self.memory_saver_enabled = self.settings.get("memory_saver", False)
+        self.memory_saver_enabled = self.settings.get("memory_saver", True)
         self.tab_last_accessed = {}
         self.memory_saver_timer = QTimer()
         if self.memory_saver_enabled:
             self.memory_saver_timer.timeout.connect(self.cleanup_inactive_tabs)
-            self.memory_saver_timer.start(60000)
+            self.memory_saver_timer.start(30000)
 
         self.themes = {}
         self.load_themes()
@@ -3614,33 +3745,11 @@ class Browser(QMainWindow):
 
             tab = self.tabs.widget(i)
             if hasattr(tab, 'web_view') and tab.web_view:
-                tab_id = id(tab)
+                tab_id = getattr(tab, "_tab_uid", id(tab))
                 last_access = self.tab_last_accessed.get(tab_id)
 
                 if last_access and (current_time - last_access).seconds > 60:
                     self.unload_tab_content(i)
-
-    def cleanup_inactive_tabs(self):
-        if not self.memory_saver_enabled:
-            return
-
-        current_time = datetime.now()
-        inactive_threshold = timedelta(minutes=5)
-
-        for i in range(self.tabs.count()):
-            tab = self.tabs.widget(i)
-
-            if hasattr(tab, 'web_view') and tab.web_view:
-                tab_id = id(tab)
-                last_access = self.tab_last_accessed.get(tab_id)
-
-                if last_access:
-                    if current_time - last_access > inactive_threshold:
-                        if self.tabs.currentIndex() != i:
-                            self.unload_tab_content(i)
-                else:
-                    self.tab_last_accessed[tab_id] = current_time
-
 
     def setup_webengine_crash_handler(self):
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu-compositing --enable-gpu-rasterization --disable-software-rasterizer"
@@ -3678,17 +3787,17 @@ class Browser(QMainWindow):
         self.url_bar.returnPressed.connect(self.navigate_to_url)
         self.nav_toolbar.addWidget(self.url_bar)
 
-        dl_btn = QPushButton("↓")
-        dl_btn.setFixedSize(32, 32)
-        dl_btn.setToolTip("Downloads")
-        dl_btn.clicked.connect(self.show_downloads)
-        self.nav_toolbar.addWidget(dl_btn)
+        self.dl_btn = QPushButton("↓")
+        self.dl_btn.setFixedSize(32, 32)
+        self.dl_btn.setToolTip("Downloads")
+        self.dl_btn.clicked.connect(self.show_downloads)
+        self.nav_toolbar.addWidget(self.dl_btn)
 
-        bm_btn = QPushButton("★")
-        bm_btn.setFixedSize(32, 32)
-        bm_btn.setToolTip("Bookmark this page")
-        bm_btn.clicked.connect(self.bookmark_current_page)
-        self.nav_toolbar.addWidget(bm_btn)
+        self.bm_btn = QPushButton("★")
+        self.bm_btn.setFixedSize(32, 32)
+        self.bm_btn.setToolTip("Bookmark this page")
+        self.bm_btn.clicked.connect(self.bookmark_current_page)
+        self.nav_toolbar.addWidget(self.bm_btn)
 
         self.focus_btn = QPushButton("⛶")
         self.focus_btn.setFixedSize(32, 32)
@@ -3798,7 +3907,26 @@ class Browser(QMainWindow):
             self.vtab_bar.set_current(index)
         tab = self.tabs.widget(index)
         if tab:
-            self.tab_last_accessed[id(tab)] = datetime.now()
+            self.tab_last_accessed[getattr(tab, "_tab_uid", id(tab))] = datetime.now()
+
+        if self.settings.get("suspend_bg_js", True):
+            for i in range(self.tabs.count()):
+                t = self.tabs.widget(i)
+                if not t or not hasattr(t, 'web_view') or not t.web_view:
+                    continue
+                page = t.web_view.page()
+                if not page:
+                    continue
+                if i == index:
+                    page.runJavaScript("document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document, 'hidden', {value: false, configurable: true}); Object.defineProperty(document, 'visibilityState', {value: 'visible', configurable: true});")
+                else:
+                    page.runJavaScript("document.dispatchEvent(new Event('visibilitychange')); Object.defineProperty(document, 'hidden', {value: true, configurable: true}); Object.defineProperty(document, 'visibilityState', {value: 'hidden', configurable: true});")
+                    page.runJavaScript("""
+                        (function() {
+                            var v = document.querySelectorAll('video, audio');
+                            for (var i = 0; i < v.length; i++) { try { v[i].pause(); } catch(e) {} }
+                        })();
+                    """)
 
     def _on_vtab_selected(self, index):
         self.tabs.setCurrentIndex(index)
@@ -3815,7 +3943,6 @@ class Browser(QMainWindow):
                 self.theme_engine.update_new_tab_theme()
         except Exception as e:
             print(f"theme system: could not update new tab for the theme: {e}")
-
 
         for theme_folder in os.listdir(THEMES_DIR):
             theme_path = os.path.join(THEMES_DIR, theme_folder)
@@ -3839,8 +3966,8 @@ class Browser(QMainWindow):
 
                         has_images = False
                         image_files = ['back.png', 'forward.png', 'reload.png', 'settings.png',
-                                    'plus.png', 'magnify.png', 'checkbox_checked.png',
-                                    'checkbox_unchecked.png']
+                                    'plus.png', 'downloads.png', 'bookmark.png', 'focus.png',
+                                    'magnify.png', 'checkbox_checked.png', 'checkbox_unchecked.png']
                         for img in image_files:
                             if os.path.exists(os.path.join(theme_path, img)):
                                 has_images = True
@@ -3903,13 +4030,13 @@ class Browser(QMainWindow):
             return
 
         current_time = datetime.now()
-        inactive_threshold = timedelta(minutes=5)
+        inactive_threshold = timedelta(minutes=2)
 
         for i in range(self.tabs.count()):
             tab = self.tabs.widget(i)
 
             if hasattr(tab, 'web_view') and tab.web_view:
-                tab_id = id(tab)
+                tab_id = getattr(tab, "_tab_uid", id(tab))
                 last_access = self.tab_last_accessed.get(tab_id)
 
                 if last_access:
@@ -3987,7 +4114,6 @@ class Browser(QMainWindow):
             except Exception as e:
                 print(f"browser: error unloading tab {tab_index}: {e}")
 
-
     def restore_tab_content(self, tab_index):
         tab = self.tabs.widget(tab_index)
         if not hasattr(tab, 'web_view') or tab.web_view is None:
@@ -4010,11 +4136,11 @@ class Browser(QMainWindow):
                         tab.web_view.setUrl(QUrl("about:blank"))
 
                     tab.web_view.urlChanged.connect(lambda u, t=tab: self.on_url_change(t))
-                    tab.web_view.titleChanged.connect(lambda t, i=tab_index: self.on_title_change(t, i))
-                    tab.web_view.iconChanged.connect(lambda icon, i=tab_index: self.on_icon_change(icon, i))
+                    tab.web_view.titleChanged.connect(lambda t, tab=tab: self.on_title_change(t, self.tabs.indexOf(tab)))
+                    tab.web_view.iconChanged.connect(lambda icon, tab=tab: self.on_icon_change(icon, self.tabs.indexOf(tab)))
 
                     layout.addWidget(tab.web_view)
-                    self.tab_last_accessed[id(tab)] = datetime.now()
+                    self.tab_last_accessed[getattr(tab, "_tab_uid", id(tab))] = datetime.now()
 
                     self.remove_tab_state(tab_index)
 
@@ -4156,7 +4282,7 @@ class Browser(QMainWindow):
             tab.web_view.deleteLater()
             tab.web_view = None
 
-        tab_id = id(tab)
+        tab_id = getattr(tab, "_tab_uid", id(tab))
         if tab_id in self.tab_last_accessed:
             del self.tab_last_accessed[tab_id]
 
@@ -4166,7 +4292,6 @@ class Browser(QMainWindow):
             self.vtab_bar.remove_tab_entry(i)
 
         self.tabs.removeTab(i)
-
 
     def add_tab(self, url=None, is_new_tab=False):
         if url and url.startswith("settings://"):
@@ -4179,6 +4304,9 @@ class Browser(QMainWindow):
             label = self.translator.tr("new_tab", "New Tab")
         else:
             label = self.translator.tr("loading", "Loading...")
+
+        if not hasattr(new_tab, '_tab_uid'):
+            new_tab._tab_uid = id(object())
 
         i = self.tabs.addTab(new_tab, label)
         self.tabs.setCurrentIndex(i)
@@ -4197,10 +4325,11 @@ class Browser(QMainWindow):
             if new_tab.web_view:
                 new_tab.web_view.parent_browser = self
                 new_tab.web_view.urlChanged.connect(lambda u, t=new_tab: self.on_url_change(t))
-                new_tab.web_view.titleChanged.connect(lambda t, idx=i: self.on_title_change(t, idx))
-                new_tab.web_view.iconChanged.connect(lambda icon, idx=i: self.on_icon_change(icon, idx))
+                new_tab.web_view.titleChanged.connect(lambda t, tab=new_tab: self.on_title_change(t, self.tabs.indexOf(tab)))
+                new_tab.web_view.iconChanged.connect(lambda icon, tab=new_tab: self.on_icon_change(icon, self.tabs.indexOf(tab)))
                 new_tab.web_view.urlChanged.connect(lambda u: self.history.append(new_tab.web_view.url().toString()))
-                self.tab_last_accessed[id(new_tab)] = datetime.now()
+                new_tab._tab_uid = id(object())
+                self.tab_last_accessed[new_tab._tab_uid] = datetime.now()
 
         return new_tab
 
@@ -4235,7 +4364,8 @@ class Browser(QMainWindow):
             "show_welcome_screen": True,
             "language": "English",
             "theme": self.translator.tr("default_theme", "Default Theme"),
-            "memory_saver": False,
+            "memory_saver": True,
+            "suspend_bg_js": False,
             "restore_session": True,
             "sound_enabled": True,
             "vertical_tabs": False,
@@ -4298,7 +4428,6 @@ class Browser(QMainWindow):
             return "https://" + query
         search_template = self.search_engines.get(self.current_search_engine, "https://www.google.com/search?q={}")
         return search_template.format(quote(query))
-
 
     CAT_BROWSER_PAGES = {
         "newtab":    "new_tab",
@@ -4597,11 +4726,21 @@ class Browser(QMainWindow):
         return web_view
 
     def on_title_change(self, title, index):
+        sender_tab = None
+        for i in range(self.tabs.count()):
+            tab = self.tabs.widget(i)
+            if hasattr(tab, 'web_view') and tab.web_view and tab.web_view.titleChanged:
+                if self.tabs.indexOf(tab) == index:
+                    sender_tab = tab
+                    break
+        live_index = self.tabs.indexOf(sender_tab) if sender_tab else index
+        if live_index < 0:
+            live_index = index
         tab_text = title[:20] + "..." if len(title) > 23 else title
         display = tab_text if title else self.translator.tr("new_tab", "New Tab")
-        self.tabs.setTabText(index, display)
+        self.tabs.setTabText(live_index, display)
         if hasattr(self, 'vtab_bar') and self.settings.get("vertical_tabs", True):
-            self.vtab_bar.set_title(index, display)
+            self.vtab_bar.set_title(live_index, display)
 
     def on_icon_change(self, icon, index):
         if not icon.isNull():
@@ -4636,10 +4775,10 @@ class Browser(QMainWindow):
 
     def inspect_current_page(self):
         browser = self.current_browser()
-        if browser and hasattr(browser, 'inspect_element'):
-            browser.inspect_element()
+        if browser and hasattr(browser, 'open_dev_tools'):
+            browser.open_dev_tools()
         else:
-            QMessageBox.information(self, "Inspect Element", "No web page to inspect.")
+            QMessageBox.information(self, "Developer Tools", "No web page to open developer tools for.")
 
     def navigate_to_url(self):
         url = self.url_bar.text().strip()
@@ -4666,11 +4805,11 @@ class Browser(QMainWindow):
 
                 tab_index = self.tabs.indexOf(current_tab)
                 current_tab.web_view.urlChanged.connect(lambda u, t=current_tab: self.on_url_change(t))
-                current_tab.web_view.titleChanged.connect(lambda t, i=tab_index: self.on_title_change(t, i))
-                current_tab.web_view.iconChanged.connect(lambda icon, i=tab_index: self.on_icon_change(icon, i))
+                current_tab.web_view.titleChanged.connect(lambda t, tab=current_tab: self.on_title_change(t, self.tabs.indexOf(tab)))
+                current_tab.web_view.iconChanged.connect(lambda icon, tab=current_tab: self.on_icon_change(icon, self.tabs.indexOf(tab)))
                 current_tab.web_view.urlChanged.connect(lambda u: self.history.append(current_tab.web_view.url().toString()))
                 layout.addWidget(current_tab.web_view)
-                self.tab_last_accessed[id(current_tab)] = datetime.now()
+                self.tab_last_accessed[getattr(current_tab, "_tab_uid", id(current_tab))] = datetime.now()
                 self.tabs.setTabText(tab_index, self.translator.tr("loading", "Loading..."))
             return
 
@@ -4685,13 +4824,13 @@ class Browser(QMainWindow):
         if self.tabs.currentWidget() == tab and hasattr(tab, 'web_view') and tab.web_view:
             self.url_bar.setText(tab.web_view.url().toString())
 
-        tab_id = id(tab)
+        tab_id = getattr(tab, "_tab_uid", id(tab))
         self.tab_last_accessed[tab_id] = datetime.now()
 
     def update_url_bar(self, *args):
         tab = self.tabs.currentWidget()
-        if hasattr(tab, "browser") and isinstance(tab.browser, QWebEngineView):
-            self.url_bar.setText(tab.browser.url().toString())
+        if hasattr(tab, "web_view") and tab.web_view:
+            self.url_bar.setText(tab.web_view.url().toString())
         else:
             self.url_bar.setText("")
 
@@ -4895,7 +5034,6 @@ class Browser(QMainWindow):
             if hasattr(self, '_hover_bar'):
                 self._hover_bar.setGeometry(0, 0, cw.width(), 36)
 
-
     def closeEvent(self, event):
         print(f"cat browser closing (plz use it again)")
         if hasattr(self, 'sound_manager'):
@@ -4981,7 +5119,24 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
 
 if __name__ == "__main__":
     sys.excepthook = global_exception_handler
-    
+
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " ".join([
+        "--process-per-site",
+        "--disable-extensions",
+        "--disable-background-networking",
+        "--disable-default-apps",
+        "--disable-sync",
+        "--disable-translate",
+        "--disable-logging",
+        "--no-first-run",
+        "--safebrowsing-disable-auto-update",
+        "--renderer-process-limit=4",
+        "--js-flags=--max-old-space-size=2048 --optimize-for-size",
+        "--enable-precise-memory-info",
+        "--aggressive-cache-discard",
+        "--disable-hang-monitor",
+    ])
+
     try:
         app = QApplication(sys.argv)
         main_window = Browser()
